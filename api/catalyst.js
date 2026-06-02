@@ -47,7 +47,7 @@ export default async function handler(request) {
       body: JSON.stringify({
         // Sonnet 3.5 reliably supports web_search and returns structured JSON.
         // Change to "claude-sonnet-4-6" if you want the newest model (may be slower).
-        model: "claude-sonnet-4-6",
+        model: "claude-haiku-4-5-20251001",
         max_tokens: 1500,
         messages: [{ role: "user", content: PROMPT }],
         tools: [{ type: "web_search_20250305", name: "web_search" }],
