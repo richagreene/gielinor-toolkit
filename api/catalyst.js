@@ -1,53 +1,71 @@
-// Vercel Serverless Function — calls Anthropic server-side so your key is never exposed.
-//
-// To enable live AI catalyst analysis:
-//   1. Get a key at https://console.anthropic.com  (Settings → API Keys)
-//   2. Vercel project → Settings → Environment Variables → ANTHROPIC_API_KEY = sk-ant-...
-//   3. Redeploy.
-//
-// Without a key the app falls back to built-in illustrative examples — everything else works.
+/**
+ * Vercel Edge Function — 30-second timeout on Hobby tier (vs 10s for standard serverless).
+ * The `runtime = "edge"` export is what unlocks the longer window.
+ *
+ * DEBUGGING: Results appear in TWO places:
+ *   1. Browser DevTools → Network tab → click the /api/catalyst request → Response tab
+ *      This shows the JSON your app actually received (ok/reason/arr).
+ *   2. Vercel dashboard → your project → Functions tab → select catalyst → Logs
+ *      This shows the console.log lines below, which trace each step.
+ *
+ * SETUP: Vercel project → Settings → Environment Variables → ANTHROPIC_API_KEY = sk-ant-...
+ *        Then Deployments → ⋯ → Redeploy to pick up the key.
+ */
 
-export default async function handler(req, res) {
+export const runtime = "edge";
+export const maxDuration = 30;
+
+const PROMPT =
+  "You are an expert Old School RuneScape economy analyst. Use your web search to find the " +
+  "most recent OSRS news, patch notes, upcoming content, and roadmap items — prioritise " +
+  "anything from the last 60 days. Identify up to 5 specific upcoming or recent events " +
+  "likely to move Grand Exchange item prices. For each catalyst: name the exact items " +
+  "affected, give concrete buy/sell timing relative to the event, and explain the supply " +
+  "or demand mechanism in plain English. " +
+  "You MUST respond with ONLY a valid JSON array and nothing else — no prose, no markdown, " +
+  "no code fences, no commentary before or after. " +
+  'Each element must be: {"event":string,"date":string,"action":string,' +
+  '"items":[string],"direction":"up"|"down","timing":string,"why":string}';
+
+export default async function handler(request) {
+  const headers = { "Content-Type": "application/json" };
+  const respond = (obj) => new Response(JSON.stringify(obj), { headers });
+
   try {
     const key = process.env.ANTHROPIC_API_KEY;
-    if (!key) return res.status(200).json({ ok: false, reason: "no_key" });
+    console.log("[catalyst] key present:", !!key);
+    if (!key) return respond({ ok: false, reason: "no_key" });
 
-    const prompt =
-      "You are an expert Old School RuneScape economy analyst with access to live web search. " +
-      "Search for the LATEST OSRS news, patch notes, and upcoming content from the last few weeks. " +
-      "Use what you find to identify 5 upcoming or very recent events that are likely to move Grand Exchange prices. " +
-      "For each: name the SPECIFIC items most affected, explain concretely when to buy and when to sell relative to the event, and why prices should move. " +
-      "You MUST respond with ONLY a valid JSON array — no prose, no markdown, no code fences. " +
-      'Each element must be: {"event":string,"date":string,"action":string,"items":[string],"direction":"up"|"down","timing":string,"why":string}';
-
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
+    console.log("[catalyst] calling Anthropic...");
+    const apiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "x-api-key": key,
         "anthropic-version": "2023-06-01",
-        // Required for the built-in web search tool
-        "anthropic-beta": "web-search-2025-03-05",
       },
       body: JSON.stringify({
-        // claude-3-5-sonnet supports web search and structured output well.
-        // Update to any Claude model your API account supports — see docs.anthropic.com/models
-        model: "claude-sonnet-4-6",
+        // Sonnet 3.5 reliably supports web_search and returns structured JSON.
+        // Change to "claude-sonnet-4-6" if you want the newest model (may be slower).
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1500,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: PROMPT }],
         tools: [{ type: "web_search_20250305", name: "web_search" }],
       }),
     });
 
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      return res.status(200).json({ ok: false, reason: err.error?.message || `http_${r.status}` });
+    console.log("[catalyst] API status:", apiRes.status);
+    if (!apiRes.ok) {
+      const errBody = await apiRes.json().catch(() => ({}));
+      const reason = errBody?.error?.message || `http_${apiRes.status}`;
+      console.log("[catalyst] API error:", reason);
+      return respond({ ok: false, reason });
     }
 
-    const data = await r.json();
+    const data = await apiRes.json();
+    const blockTypes = (data.content || []).map((b) => b.type).join(", ");
+    console.log("[catalyst] content block types:", blockTypes);
 
-    // The model may return tool_use blocks (search queries) alongside text blocks.
-    // We only need the text blocks — the final analysis.
     const rawText = (data.content || [])
       .filter((b) => b.type === "text")
       .map((b) => b.text)
@@ -55,23 +73,36 @@ export default async function handler(req, res) {
       .replace(/```json|```/g, "")
       .trim();
 
-    if (!rawText) return res.status(200).json({ ok: false, reason: "empty_response" });
+    console.log("[catalyst] raw text length:", rawText.length, "| first 120:", rawText.slice(0, 120));
 
-    // Parse robustly — find a JSON array even if the model wraps it in prose.
+    if (!rawText) {
+      console.log("[catalyst] no text block in response — stop reason:", data.stop_reason);
+      return respond({ ok: false, reason: "empty_response", stop_reason: data.stop_reason });
+    }
+
+    // Try direct parse first; fall back to extracting the first [...] block from prose
     let arr = null;
-    try { arr = JSON.parse(rawText); }
-    catch {
+    try {
+      arr = JSON.parse(rawText);
+    } catch {
+      console.log("[catalyst] direct parse failed, trying regex extraction");
       const match = rawText.match(/\[[\s\S]*\]/);
-      if (match) { try { arr = JSON.parse(match[0]); } catch { /* fall through */ } }
+      if (match) {
+        try { arr = JSON.parse(match[0]); }
+        catch (e2) { console.log("[catalyst] regex parse also failed:", e2.message); }
+      }
     }
 
-    if (!Array.isArray(arr) || arr.length === 0) {
-      return res.status(200).json({ ok: false, reason: "no_json_array", raw: rawText.slice(0, 300) });
+    if (!arr || !Array.isArray(arr) || arr.length === 0) {
+      console.log("[catalyst] no usable array produced");
+      return respond({ ok: false, reason: "parse_failed", preview: rawText.slice(0, 300) });
     }
 
-    return res.status(200).json({ ok: true, arr: arr.slice(0, 5) });
+    console.log("[catalyst] success —", arr.length, "catalysts");
+    return respond({ ok: true, arr: arr.slice(0, 5) });
 
   } catch (e) {
-    return res.status(200).json({ ok: false, reason: "exception", message: e?.message || "unknown" });
+    console.log("[catalyst] exception:", e.message);
+    return respond({ ok: false, reason: "exception", message: String(e.message) });
   }
 }
