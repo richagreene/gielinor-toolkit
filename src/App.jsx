@@ -26,7 +26,7 @@ const fmtNum = (raw) => { const d = String(raw ?? "").replace(/[^0-9]/g, ""); re
 
 function geTax(sell, exempt) {
   if (exempt || sell < 50) return 0;
-  return Math.min(Math.floor(sell * 0.01), 5_000_000);
+  return Math.min(Math.floor(sell * 0.02), 5_000_000);
 }
 function hms(ms) {
   if (ms <= 0) return "00:00:00";
@@ -182,12 +182,12 @@ function usePersistent(key, initial) {
 }
 
 const METRIC = {
-  margin: "Profit per item after the 1% GE tax — that is sell price minus buy price minus tax. The core 'is this worth flipping' number.",
+  margin: "Profit per item after the 2% GE tax — that is sell price minus buy price minus tax. The core 'is this worth flipping' number.",
   roi: "Return on investment: margin as a percentage of the buy price. High ROI means more profit per gp invested — what matters when your cash stack is the limit.",
   potential: "Max realistic profit per 4-hour cycle = margin × buy limit. The true 'how much can I actually make here' figure.",
   limit: "The most of this item you can buy every 4 hours through the Grand Exchange.",
   volume: "How many of this item trade per day. High volume means your buy/sell offers fill quickly; low volume means they may sit unfilled.",
-  tax: "A 1% tax taken from the seller on most items, capped at 5m per item. Items under 50 gp and a few special items (like bonds) are exempt.",
+  tax: "A 2% tax taken from the seller on most items, capped at 5m per item. Items under 50 gp and a few special items (like bonds) are exempt.",
 };
 
 /* =============================== sample data =============================== */
@@ -523,7 +523,7 @@ function Detail({ item, onClose, watched, toggleWatch, addAlert, now }) {
         <div className="break">
           <div className="break-row"><span>Buy at (insta-sell)</span><b className="mono">{fmtFull(item.low)}</b></div>
           <div className="break-row"><span>Sell at (insta-buy)</span><b className="mono">{fmtFull(item.high)}</b></div>
-          <div className="break-row sub"><span>GE tax (1%{item.exempt ? " · exempt" : ""}) <InfoDot text={METRIC.tax} /></span><b className="mono" style={{ color: "var(--red)" }}>{m.tax ? "-" + fmtFull(m.tax) : "0 gp"}</b></div>
+          <div className="break-row sub"><span>GE tax (2%{item.exempt ? " · exempt" : ""}) <InfoDot text={METRIC.tax} /></span><b className="mono" style={{ color: "var(--red)" }}>{m.tax ? "-" + fmtFull(m.tax) : "0 gp"}</b></div>
           <div className="break-row total"><span>Net margin / item <InfoDot text={METRIC.margin} /></span><b className="mono" style={{ color: m.margin >= 0 ? "var(--green)" : "var(--red)" }}>{(m.margin >= 0 ? "+" : "") + fmtFull(m.margin)}</b></div>
         </div>
 
@@ -1375,7 +1375,7 @@ function Coffer({ onHome }) {
         {tab === "flips" && (
           <footer className="foot">
             {source === "sample" ? "Showing sample data inside the preview sandbox. The same build pulls live OSRS Wiki prices once hosted." : `Live OSRS Wiki prices · ${derived.length.toLocaleString()} items tracked.`}
-            <br />Margin = sell − buy − 1% GE tax (capped 5m). Potential = margin × 4-hour buy limit.
+            <br />Margin = sell − buy − 2% GE tax (capped 5m). Potential = margin × 4-hour buy limit.
           </footer>
         )}
       </div>
