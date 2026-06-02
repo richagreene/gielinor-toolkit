@@ -309,10 +309,18 @@ const LT_COLOR = { "Blue chip": "var(--gold-bright)", "Macro": "#7fd6e8", "Scarc
 /* =============================== small UI =============================== */
 function InfoDot({ text }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    function dismiss(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener("mousedown", dismiss);
+    document.addEventListener("touchstart", dismiss);
+    return () => { document.removeEventListener("mousedown", dismiss); document.removeEventListener("touchstart", dismiss); };
+  }, [open]);
   return (
-    <span className="info">
+    <span className="info" ref={ref}>
       <button className="info-dot" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }} aria-label="definition">i</button>
-      <span className={"info-bub" + (open ? " info-open" : "")} onClick={(e) => e.stopPropagation()}>{text}</span>
+      {open && <span className="info-bub" onClick={(e) => e.stopPropagation()}>{text}</span>}
     </span>
   );
 }
@@ -687,11 +695,9 @@ function ForecastTab({ pool, derived, source, onSelect, onOpenThesis }) {
     try {
       const res = await fetch("/api/catalyst", { method: "POST" });
       const data = await res.json();
-      if (!data || !data.ok || !data.text) throw 0;
-      const text = String(data.text).replace(/```json|```/g, "").trim();
-      const arr = JSON.parse(text);
-      if (Array.isArray(arr) && arr.length) { setAiCatalysts(arr.slice(0, 5)); setAiState("done"); return; }
-      throw 0;
+      if (!data || !data.ok || !Array.isArray(data.arr) || !data.arr.length) throw 0;
+      setAiCatalysts(data.arr.slice(0, 5));
+      setAiState("done");
     } catch (e) { setAiState("fail"); }
   }
   const catalysts = aiCatalysts || SAMPLE_CATALYSTS;
@@ -777,7 +783,7 @@ function ForecastTab({ pool, derived, source, onSelect, onOpenThesis }) {
           {aiState === "loading" ? "Analyzing…" : <><Sparkles size={13} /> Generate live AI analysis</>}
         </button>
         <span className="ai-note">
-          {aiState === "done" ? "Live analysis from recent OSRS news." : aiState === "fail" ? "Live AI connects when hosted with an API key — showing illustrative examples." : "Cross-references the OSRS news & roadmap. Illustrative examples shown below."}
+          {aiState === "done" ? "Live analysis complete — sourced from Claude." : aiState === "fail" ? "Analysis unavailable — illustrative examples shown. If your key is set, check Vercel's function logs for the error." : "Uses Claude to cross-reference the OSRS roadmap. Illustrative examples shown below."}
         </span>
       </div>
       <div className="cat-list">
@@ -1234,16 +1240,18 @@ function Coffer({ onHome }) {
           };
         }).filter(Boolean).filter((x) => {
           if (x.limit <= 0 || x.high <= x.low) return false;
-          // Kill extreme-spread noise (e.g. stale 35gp vs recent 3.2k trades on obscure items).
-          // A spread ratio > 10x is almost always stale/irregular data, not a real flip.
-          if (x.high / x.low > 10) return false;
-          // Require that at least one price side traded in the last 48h.
-          // If BOTH sides are older than 48h the "margin" is a ghost price.
-          const ms48 = 48 * 3600 * 1000;
-          const now = Date.now();
-          const hiOk = !x.highTime || (now - x.highTime * 1000) < ms48;
-          const loOk = !x.lowTime || (now - x.lowTime * 1000) < ms48;
-          if (x.highTime && x.lowTime && !hiOk && !loOk) return false;
+          // Spread cap: high/low > 5x is virtually always stale or irregular data, not a real flip.
+          if (x.high / x.low > 5) return false;
+          // Volume gate: if we have 24h volume data, drop items with < 10 daily trades.
+          // Megarares (tbow ~40/day) pass easily; zero-volume junk is excluded.
+          if (x.vol !== null && x.vol < 10) return false;
+          // Freshness: if the API has timestamps, BOTH sides must have traded within 6 hours.
+          // A stale side means the "price" could be hours or days out of date.
+          if (x.highTime && x.lowTime) {
+            const ms6h = 6 * 3600 * 1000;
+            const now = Date.now();
+            if ((now - x.highTime * 1000) > ms6h || (now - x.lowTime * 1000) > ms6h) return false;
+          }
           return true;
         });
         if (!dead && merged.length > 50) { setItems(merged); setSource("live"); setLoading(false); return; }
@@ -1477,8 +1485,7 @@ const CSS = `
 /* info dot */
 .info{position:relative;display:inline-flex}
 .info-dot{width:14px;height:14px;border-radius:50%;border:1px solid var(--line);background:rgba(231,185,74,.1);color:var(--gold-bright);font-size:9px;font-weight:700;font-style:italic;cursor:pointer;display:grid;place-items:center;line-height:1;font-family:Georgia,serif}
-.info-bub{display:none;position:absolute;bottom:130%;left:50%;transform:translateX(-50%);width:210px;background:#0c0f14;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:11.5px;line-height:1.5;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:normal;z-index:30;box-shadow:0 10px 30px rgba(0,0,0,.5);font-family:'Sora'}
-.info:hover .info-bub,.info-bub.info-open{display:block}
+.info-bub{position:absolute;bottom:130%;left:50%;transform:translateX(-50%);width:210px;background:#0c0f14;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:11.5px;line-height:1.5;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:normal;z-index:100;box-shadow:0 10px 30px rgba(0,0,0,.5);font-family:'Sora'}
 
 /* tabs shared */
 .tabwrap{animation:fadeUp .3s ease both}
