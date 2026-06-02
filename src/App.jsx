@@ -666,10 +666,9 @@ function LongTermModal({ entry, item, source, onClose, onOpenDetail }) {
 }
 
 /* =============================== forecast tab =============================== */
-function ForecastTab({ pool, derived, source, onSelect }) {
+function ForecastTab({ pool, derived, source, onSelect, onOpenThesis }) {
   const [aiState, setAiState] = useState("idle");
   const [aiCatalysts, setAiCatalysts] = useState(null);
-  const [thesis, setThesis] = useState(null);
 
   const rising = useMemo(() => [...pool].sort((a, b) => Math.abs(b.sig.score) - Math.abs(a.sig.score)).slice(0, 5), [pool]);
   const risingIds = useMemo(() => new Set(rising.map((x) => x.id)), [rising]);
@@ -759,7 +758,7 @@ function ForecastTab({ pool, derived, source, onSelect }) {
         {LONGTERM.map((e) => {
           const it = derived.find((x) => x.id === e.id);
           return (
-            <button key={e.id} className="lt-card" onClick={() => setThesis(e)}>
+            <button key={e.id} className="lt-card" onClick={() => onOpenThesis(e)}>
               <Glyph id={e.id} name={e.name} members={it ? it.members : false} size={40} />
               <div className="lt-main">
                 <div className="lt-row1"><span className="lt-name">{e.name}</span><span className="lt-badge" style={{ color: LT_COLOR[e.type] || "var(--muted)" }}>{e.type}</span></div>
@@ -811,8 +810,6 @@ function ForecastTab({ pool, derived, source, onSelect }) {
 
       <div className="sec-h">Things to think about</div>
       <div className="tips">{TIPS.map((t, i) => <div key={i} className="tip-card"><span className="tip-num mono">{String(i + 1).padStart(2, "0")}</span><span>{t}</span></div>)}</div>
-
-      {thesis && <LongTermModal entry={thesis} item={derived.find((x) => x.id === thesis.id) || null} source={source} onClose={() => setThesis(null)} onOpenDetail={(it) => { setThesis(null); onSelect(it); }} />}
     </div>
   );
 }
@@ -1194,6 +1191,7 @@ function Coffer({ onHome }) {
   const [tick, setTick] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [selected, setSelected] = useState(null);
+  const [thesis, setThesis] = useState(null);
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("potential");
@@ -1234,7 +1232,20 @@ function Coffer({ onHome }) {
             vol: v ? (buyVol + sellVol) : null, buyVol, sellVol,
             highTime: p.highTime || null, lowTime: p.lowTime || null,
           };
-        }).filter(Boolean).filter((x) => x.limit > 0 && x.high > x.low);
+        }).filter(Boolean).filter((x) => {
+          if (x.limit <= 0 || x.high <= x.low) return false;
+          // Kill extreme-spread noise (e.g. stale 35gp vs recent 3.2k trades on obscure items).
+          // A spread ratio > 10x is almost always stale/irregular data, not a real flip.
+          if (x.high / x.low > 10) return false;
+          // Require that at least one price side traded in the last 48h.
+          // If BOTH sides are older than 48h the "margin" is a ghost price.
+          const ms48 = 48 * 3600 * 1000;
+          const now = Date.now();
+          const hiOk = !x.highTime || (now - x.highTime * 1000) < ms48;
+          const loOk = !x.lowTime || (now - x.lowTime * 1000) < ms48;
+          if (x.highTime && x.lowTime && !hiOk && !loOk) return false;
+          return true;
+        });
         if (!dead && merged.length > 50) { setItems(merged); setSource("live"); setLoading(false); return; }
         throw 0;
       } catch { if (!dead) { setItems(MOCK); setSource("sample"); setLoading(false); } }
@@ -1315,7 +1326,7 @@ function Coffer({ onHome }) {
 
         {tab === "flips" && <FlipsTab loading={loading} filtered={filtered} kpis={kpis} query={query} setQuery={setQuery} sort={sort} setSort={setSort} filter={filter} setFilter={setFilter} isWatched={isWatched} toggleWatch={toggleWatch} onSelect={setSelected} now={now} />}
         {tab === "plan" && <PlanTab derived={derived} bankroll={bankroll} setBankroll={setBankroll} onSelect={setSelected} now={now} />}
-        {tab === "forecast" && <ForecastTab pool={forecastPool} derived={derived} source={source} onSelect={setSelected} />}
+        {tab === "forecast" && <ForecastTab pool={forecastPool} derived={derived} source={source} onSelect={setSelected} onOpenThesis={setThesis} />}
         {tab === "tracker" && <TrackerTab flips={flips} addFlip={addFlip} removeFlip={removeFlip} />}
         {tab === "tools" && <ToolsTab alerts={alerts} addAlert={addAlert} removeAlert={removeAlert} timers={timers} addTimer={addTimer} removeTimer={removeTimer} now={now} derived={derived} />}
 
@@ -1329,6 +1340,7 @@ function Coffer({ onHome }) {
 
       <BottomNav tab={tab} setTab={setTab} />
       {selected && <Detail item={selected} onClose={() => setSelected(null)} watched={isWatched(selected.id)} toggleWatch={toggleWatch} addAlert={addAlert} now={now} />}
+      {thesis && <LongTermModal entry={thesis} item={derived.find((x) => x.id === thesis.id) || null} source={source} onClose={() => setThesis(null)} onOpenDetail={(it) => { setThesis(null); setSelected(it); }} />}
     </div>
   );
 }
