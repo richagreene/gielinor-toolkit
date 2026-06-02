@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         // Use a current model string from https://docs.claude.com (update if needed).
-        model: "claude-3-5-sonnet-latest",
+        model: "claude-sonnet-4-6",
         max_tokens: 1200,
         messages: [{ role: "user", content: prompt }],
         // Live web search. If your account/model doesn't support it, delete the next line.
