@@ -22,6 +22,7 @@ function fmtGp(n) {
 const fmtFull = (n) => (n == null || isNaN(n) ? "—" : Math.round(n).toLocaleString() + " gp");
 const num = (v) => { const n = parseFloat(String(v).replace(/[, ]/g, "")); return isNaN(n) ? 0 : n; };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const fmtNum = (raw) => { const d = String(raw ?? "").replace(/[^0-9]/g, ""); return d ? Number(d).toLocaleString() : ""; };
 
 function geTax(sell, exempt) {
   if (exempt || sell < 50) return 0;
@@ -309,21 +310,54 @@ const LT_COLOR = { "Blue chip": "var(--gold-bright)", "Macro": "#7fd6e8", "Scarc
 /* =============================== small UI =============================== */
 function InfoDot({ text }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, below: false });
+  const btnRef = useRef(null);
+
+  function toggle(e) {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      const W = 214, vw = window.innerWidth || 400, vh = window.innerHeight || 600;
+      const left = Math.max(8, Math.min(vw - W - 8, r.left + r.width / 2 - W / 2));
+      const below = r.top < vh * 0.35;
+      setPos({ top: below ? r.bottom + 6 : r.top - 6, left, below });
+    }
+    setOpen((o) => !o);
+  }
   useEffect(() => {
     if (!open) return;
-    function dismiss(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    function dismiss(e) { if (btnRef.current && !btnRef.current.contains(e.target)) setOpen(false); }
     document.addEventListener("mousedown", dismiss);
     document.addEventListener("touchstart", dismiss);
     return () => { document.removeEventListener("mousedown", dismiss); document.removeEventListener("touchstart", dismiss); };
   }, [open]);
+
   return (
-    <span className="info" ref={ref}>
-      <button className="info-dot" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }} aria-label="definition">i</button>
-      {open && <span className="info-bub" onClick={(e) => e.stopPropagation()}>{text}</span>}
+    <span className="info">
+      <button className="info-dot" ref={btnRef} onClick={toggle} aria-label="definition">i</button>
+      {open && (
+        <span className="info-bub" style={{ position: "fixed", top: pos.top, left: pos.left, transform: pos.below ? "none" : "translateY(-100%)" }} onClick={(e) => e.stopPropagation()}>
+          {text}
+        </span>
+      )}
     </span>
   );
 }
+
+/* Formatted number input — displays commas while typing; num() strips them for calculations */
+function NumInput({ value, onChange, placeholder, style, className: cls }) {
+  return (
+    <input
+      className={"num " + (cls || "").trim()}
+      inputMode="numeric"
+      value={value}
+      onChange={(e) => onChange(fmtNum(e.target.value))}
+      placeholder={placeholder}
+      style={style}
+    />
+  );
+}
+
 const ICON_SOURCES = [
   (id) => `https://static.runelite.net/cache/item/icon/${id}.png`,
   (id) => `https://secure.runescape.com/m=itemdb_oldschool/obj_sprite.gif?id=${id}`,
@@ -418,7 +452,7 @@ function Detail({ item, onClose, watched, toggleWatch, addAlert, now }) {
   const [series, setSeries] = useState(null);
   const m = item.metrics;
   const [alType, setAlType] = useState("margin_above");
-  const [alVal, setAlVal] = useState(String(Math.max(0, Math.round(m.margin))));
+  const [alVal, setAlVal] = useState(fmtNum(String(Math.max(0, Math.round(m.margin)))));
   const [added, setAdded] = useState(false);
   const range = useMemo(() => rangeFromSeries(series || buildSeries(item.id, item.low, item.high), item.low, item.high), [series, item]);
   const lowAge = now / 1000 - (item.lowTime || 0);
@@ -521,7 +555,7 @@ function Detail({ item, onClose, watched, toggleWatch, addAlert, now }) {
               <option value="price_below">Buy price at or below</option>
               <option value="price_above">Sell price at or above</option>
             </select>
-            <input className="num" value={alVal} onChange={(e) => setAlVal(e.target.value)} inputMode="numeric" />
+            <NumInput value={alVal} onChange={setAlVal} placeholder="value" />
             <button className="btn-gold" onClick={doAdd}>{added ? "Added ✓" : "Add"}</button>
           </div>
           <div className="hint">Alerts are checked when you refresh. Manage them in the Tools tab.</div>
@@ -856,9 +890,9 @@ function TrackerTab({ flips, addFlip, removeFlip }) {
         <div className="form-title">Log a flip</div>
         <input className="ti" value={name} onChange={(e) => setName(e.target.value)} placeholder="Item name (e.g. Abyssal whip)" />
         <div className="form-grid">
-          <label className="fl"><span>Buy / ea</span><input className="num" value={buy} onChange={(e) => setBuy(e.target.value)} inputMode="numeric" placeholder="0" /></label>
-          <label className="fl"><span>Sell / ea</span><input className="num" value={sell} onChange={(e) => setSell(e.target.value)} inputMode="numeric" placeholder="0" /></label>
-          <label className="fl"><span>Qty</span><input className="num" value={qty} onChange={(e) => setQty(e.target.value)} inputMode="numeric" placeholder="1" /></label>
+          <label className="fl"><span>Buy / ea</span><NumInput value={buy} onChange={setBuy} placeholder="0" /></label>
+          <label className="fl"><span>Sell / ea</span><NumInput value={sell} onChange={setSell} placeholder="0" /></label>
+          <label className="fl"><span>Qty</span><NumInput value={qty} onChange={setQty} placeholder="1" /></label>
         </div>
         {canAdd && <div className="form-preview mono">Profit after tax: <b style={{ color: (num(sell) - num(buy)) * num(qty) - geTax(num(sell)) * num(qty) >= 0 ? "var(--green)" : "var(--red)" }}>{fmtGp((num(sell) - num(buy)) * Math.round(num(qty)) - geTax(num(sell)) * Math.round(num(qty)))}</b></div>}
         <button className="btn-gold wide" onClick={submit} disabled={!canAdd}><Plus size={14} /> Log flip</button>
@@ -956,7 +990,7 @@ function ToolsTab({ alerts, addAlert, removeAlert, timers, addTimer, removeTimer
             <option value="price_below">Buy price at or below</option>
             <option value="price_above">Sell price at or above</option>
           </select>
-          <input className="num" value={aVal} onChange={(e) => setAVal(e.target.value)} inputMode="numeric" placeholder="value" />
+          <NumInput value={aVal} onChange={setAVal} placeholder="value" />
           <button className="btn-gold" onClick={addA}>Add</button>
         </div>
       </div>
@@ -1011,9 +1045,9 @@ function ToolsTab({ alerts, addAlert, removeAlert, timers, addTimer, removeTimer
       <div className="form-card">
         <div className="form-title">Flip calculator</div>
         <div className="form-grid">
-          <label className="fl"><span>Buy / ea</span><input className="num" value={cb} onChange={(e) => setCb(e.target.value)} inputMode="numeric" placeholder="0" /></label>
-          <label className="fl"><span>Sell / ea</span><input className="num" value={cs} onChange={(e) => setCs(e.target.value)} inputMode="numeric" placeholder="0" /></label>
-          <label className="fl"><span>Qty</span><input className="num" value={cq} onChange={(e) => setCq(e.target.value)} inputMode="numeric" placeholder="1" /></label>
+          <label className="fl"><span>Buy / ea</span><NumInput value={cb} onChange={setCb} placeholder="0" /></label>
+          <label className="fl"><span>Sell / ea</span><NumInput value={cs} onChange={setCs} placeholder="0" /></label>
+          <label className="fl"><span>Qty</span><NumInput value={cq} onChange={setCq} placeholder="1" /></label>
         </div>
         <div className="calc-out">
           <div><span>GE tax</span><b className="mono" style={{ color: "var(--red)" }}>-{fmtGp(cTax)}</b></div>
@@ -1045,9 +1079,9 @@ function ToolsTab({ alerts, addAlert, removeAlert, timers, addTimer, removeTimer
             </div>
             {!alchVal && <div className="hint">This item has no high alch value — it can't be alched.</div>}
             <div className="form-grid">
-              <label className="fl"><span>Purchase price</span><input className="num" value={ab} onChange={(e) => setAb(e.target.value)} inputMode="numeric" placeholder="0" /></label>
-              <label className="fl"><span>Nature rune</span><input className="num" value={an} onChange={(e) => setAn(e.target.value)} inputMode="numeric" placeholder={String(naturePrice)} /></label>
-              <label className="fl"><span>Quantity</span><input className="num" value={aq} onChange={(e) => setAq(e.target.value)} inputMode="numeric" placeholder="1" /></label>
+              <label className="fl"><span>Purchase price</span><NumInput value={ab} onChange={setAb} placeholder="0" /></label>
+              <label className="fl"><span>Nature rune</span><NumInput value={an} onChange={setAn} placeholder={String(naturePrice)} /></label>
+              <label className="fl"><span>Quantity</span><NumInput value={aq} onChange={setAq} placeholder="1" /></label>
             </div>
             <div className="calc-out">
               <div><span>Profit / cast</span><b className="mono" style={{ color: alchPerCast >= 0 ? "var(--green)" : "var(--red)" }}>{(alchPerCast >= 0 ? "+" : "") + fmtGp(alchPerCast)}</b></div>
@@ -1101,9 +1135,9 @@ function PlanTab({ derived, bankroll, setBankroll, onSelect, now }) {
       <div className="form-card">
         <div className="bankroll">
           <Coins size={18} style={{ color: "var(--gold-bright)" }} />
-          <input className="num bankroll-in" value={bankroll} onChange={(e) => setBankroll(e.target.value)} inputMode="numeric" placeholder="Your bankroll (gp)" />
+          <NumInput className="bankroll-in" value={bankroll} onChange={setBankroll} placeholder="Your bankroll (gp)" />
         </div>
-        <div className="chip-row">{chips.map(([l, v]) => <button key={l} className="amt-chip" onClick={() => setBankroll(String(v))}>{l}</button>)}</div>
+        <div className="chip-row">{chips.map(([l, v]) => <button key={l} className="amt-chip" onClick={() => setBankroll(fmtNum(String(v)))}>{l}</button>)}</div>
         <button className={"toggle" + (liquidOnly ? " on" : "")} onClick={() => setLiquidOnly((x) => !x)}>
           <span className="toggle-dot" />{liquidOnly ? "Liquid items only (recommended)" : "Including thin / low-volume items"}
         </button>
@@ -1485,7 +1519,7 @@ const CSS = `
 /* info dot */
 .info{position:relative;display:inline-flex}
 .info-dot{width:14px;height:14px;border-radius:50%;border:1px solid var(--line);background:rgba(231,185,74,.1);color:var(--gold-bright);font-size:9px;font-weight:700;font-style:italic;cursor:pointer;display:grid;place-items:center;line-height:1;font-family:Georgia,serif}
-.info-bub{position:absolute;bottom:130%;left:50%;transform:translateX(-50%);width:210px;background:#0c0f14;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:11.5px;line-height:1.5;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:normal;z-index:100;box-shadow:0 10px 30px rgba(0,0,0,.5);font-family:'Sora'}
+.info-bub{width:214px;background:#0c0f14;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:11.5px;line-height:1.5;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:normal;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,.5);font-family:'Sora'}
 
 /* tabs shared */
 .tabwrap{animation:fadeUp .3s ease both}
