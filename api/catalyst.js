@@ -1,13 +1,11 @@
-// Vercel Serverless Function — keeps your Anthropic API key on the SERVER (never in the browser).
+// Vercel Serverless Function — calls Anthropic server-side so your key is never in the browser.
 //
-// To enable the live AI catalyst analysis:
-//   1. Get an API key at https://console.anthropic.com  (Settings -> API Keys)
-//   2. In your Vercel project: Settings -> Environment Variables
-//        Name:  ANTHROPIC_API_KEY
-//        Value: your key (starts with sk-ant-...)
+// To enable live AI catalyst analysis:
+//   1. Get an API key at https://console.anthropic.com (Settings → API Keys)
+//   2. Vercel project → Settings → Environment Variables → add ANTHROPIC_API_KEY = sk-ant-...
 //   3. Redeploy.
 //
-// Until a key is set, the app simply shows the built-in illustrative examples — everything else works.
+// Without a key the app shows built-in examples — everything else works fine.
 
 export default async function handler(req, res) {
   try {
@@ -15,11 +13,12 @@ export default async function handler(req, res) {
     if (!key) return res.status(200).json({ ok: false, reason: "no_key" });
 
     const prompt =
-      "Search for the most recent Old School RuneScape news, game updates, and roadmap announcements. " +
-      "Identify up to 5 upcoming or recent catalysts likely to move Grand Exchange item prices. " +
-      "For each, name the SPECIFIC supplies or items most affected and give concrete timing advice on when to buy and when to sell relative to the event. " +
-      "Respond with ONLY a JSON array (no prose, no code fences) where each element is " +
-      '{"event":string,"date":string,"action":string,"items":[string],"direction":"up"|"down","timing":string,"why":string}.';
+      "You are an expert Old School RuneScape economy analyst. " +
+      "Identify up to 5 upcoming or recent OSRS events or game changes likely to move Grand Exchange item prices. " +
+      "Draw on your knowledge of OSRS updates, seasonal events, and economy patterns. " +
+      "For each event name the SPECIFIC items most affected, explain when to buy and when to sell, and why prices should move. " +
+      "You MUST respond with ONLY a valid JSON array and nothing else — no prose, no markdown, no code fences. " +
+      "Each element: {\"event\":string,\"date\":string,\"action\":string,\"items\":[string],\"direction\":\"up\"|\"down\",\"timing\":string,\"why\":string}";
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -29,26 +28,52 @@ export default async function handler(req, res) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        // Use a current model string from https://docs.claude.com (update if needed).
-        model: "claude-sonnet-4-6",
-        max_tokens: 1200,
+        // Haiku is fast, cheap, and great at structured output for this task.
+        // Change to "claude-sonnet-4-6" or any model your account supports.
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1500,
         messages: [{ role: "user", content: prompt }],
-        // Live web search. If your account/model doesn't support it, delete the next line.
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
       }),
     });
 
-    const data = await r.json();
-    if (data.error) return res.status(200).json({ ok: false, reason: data.error.message || "api_error" });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      return res.status(200).json({ ok: false, reason: err.error?.message || `http_${r.status}` });
+    }
 
-    const text = (data.content || [])
+    const data = await r.json();
+    const rawText = (data.content || [])
       .filter((b) => b.type === "text")
       .map((b) => b.text)
-      .join("\n");
+      .join("\n")
+      .replace(/```json|```/g, "")
+      .trim();
 
-    if (!text) return res.status(200).json({ ok: false, reason: "empty" });
-    return res.status(200).json({ ok: true, text });
+    if (!rawText) return res.status(200).json({ ok: false, reason: "empty_response" });
+
+    // Try a direct parse first; fall back to extracting the first [...] array from the text.
+    let arr = null;
+    try {
+      arr = JSON.parse(rawText);
+    } catch {
+      const match = rawText.match(/\[[\s\S]*\]/);
+      if (match) {
+        try { arr = JSON.parse(match[0]); } catch (e2) {
+          return res.status(200).json({ ok: false, reason: "json_parse_failed", raw: rawText.slice(0, 200) });
+        }
+      } else {
+        return res.status(200).json({ ok: false, reason: "no_json_found", raw: rawText.slice(0, 200) });
+      }
+    }
+
+    if (!Array.isArray(arr) || arr.length === 0) {
+      return res.status(200).json({ ok: false, reason: "empty_array" });
+    }
+
+    // Return the parsed array directly — no client-side JSON.parse needed.
+    return res.status(200).json({ ok: true, arr: arr.slice(0, 5) });
+
   } catch (e) {
-    return res.status(200).json({ ok: false, reason: "exception" });
+    return res.status(200).json({ ok: false, reason: "exception", message: e.message });
   }
 }
