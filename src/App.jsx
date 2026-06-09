@@ -1433,6 +1433,7 @@ function Launcher({ onOpen }) {
 /* =============================== app shell =============================== */
 export default function App() {
   const [view, setView] = useState("home");
+  useEffect(() => { try { window.scrollTo(0, 0); } catch (e) {} }, [view]);
   if (view === "coffer") return <Coffer onHome={() => setView("home")} />;
   if (view === "lodestar") return <Lodestar onHome={() => setView("home")} />;
   return <Launcher onOpen={(k) => setView(k)} />;
