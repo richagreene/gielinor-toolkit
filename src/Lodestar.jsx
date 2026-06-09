@@ -163,6 +163,195 @@ const BOSSES = [
     supplies: ["Prayer potions", "Saradomin brews / super restores", "Ranging potions"],
     tips: "Practice the waves on a simulator first. A long-term goal — earn it once and wear it forever.",
   },
+  {
+    id: "scurrius", name: "Scurrius", cat: "Early", order: 13, womKey: "scurrius",
+    skills: { attack: 50, strength: 50, defence: 40 }, quests: [],
+    access: "The Ratacombs beneath Varrock or Lumbridge. A great first real boss, solo or with the group.",
+    reward: "Scurrius' spine (a strong early weapon upgrade), good combat XP, and supplies.",
+    gear: "Any decent melee or ranged; pray against the squeak attack and dodge the falling debris.",
+    supplies: ["Food", "Prayer potions"],
+    tips: "An ideal low-level milestone — accessible, fast, and group-friendly.",
+  },
+  {
+    id: "kbd", name: "King Black Dragon", cat: "Mid", order: 14, womKey: "king_black_dragon",
+    skills: { ranged: 70, defence: 60, prayer: 43 }, quests: [],
+    access: "KBD Lair, reached through the Wilderness — bring only what you can lose. Antifire is essential.",
+    reward: "Dragon drops, KBD heads, fast Prayer XP, and the Prince Black Dragon pet — an accessible solo dragon.",
+    gear: "Ranged or melee with an antifire shield; Protect from Magic helps with the dragonfire.",
+    supplies: ["Extended antifire", "Prayer potions", "Food"],
+    tips: "Light Wilderness — antifire is non-negotiable. A reliable, low-pressure dragon boss.",
+  },
+  {
+    id: "dks", name: "Dagannoth Kings", cat: "Mid", order: 15, womKey: "dagannoth_rex",
+    skills: { ranged: 70, magic: 70, attack: 70, strength: 70, defence: 70, prayer: 43 }, quests: [],
+    access: "Waterbirth Island dungeon. Three kings of different combat styles share the room.",
+    reward: "Berserker, Archer, Seers and Warrior rings — a core ironman ring source — plus the Dragon axe.",
+    gear: "Bring all three styles, or world-hop to fight one king at a time. The rings are the prize.",
+    supplies: ["Prayer potions", "Food", "Gear for all three styles"],
+    tips: "The ring source for ironmen. Solo one king per world, or fight all three at once with practice.",
+  },
+  {
+    id: "sarachnis", name: "Sarachnis", cat: "Mid", order: 16, womKey: "sarachnis",
+    skills: { attack: 70, strength: 70, defence: 60, prayer: 43 }, quests: [],
+    access: "Forthos Dungeon in Great Kourend. Fast kills with generous supply drops.",
+    reward: "Sarachnis cudgel (a strong budget crush weapon), the jar, and bountiful seed and supply drops.",
+    gear: "Melee with a crush weapon; she hits hard but dies quickly.",
+    supplies: ["Prayer potions", "Food", "Antipoison"],
+    tips: "Quietly one of the best mid-game ironman bosses for seeds, herbs, and supplies.",
+  },
+  {
+    id: "kq", name: "Kalphite Queen", cat: "Mid", order: 17, womKey: "kalphite_queen",
+    skills: { ranged: 75, attack: 75, strength: 75, defence: 70, prayer: 43 }, quests: [],
+    access: "Kalphite Lair in the Desert — a rope and pickaxe get you to the bottom chamber.",
+    reward: "Dragon chainbody, Dragon 2h sword, the Kalphite Queen head (Slayer helm upgrade), and the jar.",
+    gear: "Two phases of different styles — Range the first, melee or range the second. Protect prayers help.",
+    supplies: ["Prayer potions", "Food", "Both ranged and melee gear"],
+    tips: "Switch styles between phases; the KQ head is a Slayer helmet upgrade.",
+  },
+  {
+    id: "grotesque", name: "Grotesque Guardians", cat: "Mid", order: 18, womKey: "grotesque_guardians",
+    skills: { slayer: 75, attack: 75, defence: 70, prayer: 43 }, quests: [],
+    access: "75 Slayer and a granite hammer; fought on the Slayer Tower roof, ideally on a Gargoyle task.",
+    reward: "Granite gloves, ring and hammer, the black tourmaline core (for the Brimstone ring), and pets.",
+    gear: "Melee; manage Dusk and Dawn's phases and avoid the falling rocks and orbs.",
+    supplies: ["Prayer potions", "Food"],
+    tips: "Locked behind 75 Slayer and the granite hammer — a tidy mid-game upgrade source.",
+  },
+  {
+    id: "kraken", name: "Kraken", cat: "Mid", order: 19, womKey: "kraken",
+    skills: { slayer: 87, magic: 75, defence: 60 }, quests: [],
+    access: "87 Slayer; the Kraken Cove. Near-AFK once you've learned it.",
+    reward: "Trident of the seas, the Kraken tentacle (→ Abyssal tentacle), and the Kraken pet.",
+    gear: "Magic — a Trident or other powered staff. Minimal supplies needed.",
+    supplies: ["Food", "A powered staff", "A few prayer potions"],
+    tips: "Locked behind 87 Slayer; superb near-AFK Magic XP and a trident source.",
+  },
+  {
+    id: "sire", name: "Abyssal Sire", cat: "Late", order: 20, womKey: "abyssal_sire",
+    skills: { slayer: 85, attack: 80, strength: 80, defence: 70, prayer: 43 }, quests: [],
+    access: "85 Slayer; the Abyssal Nexus. Learn the four-phase fight and the poison.",
+    reward: "Abyssal whip and dagger, plus the Unsired → Abyssal bludgeon, dart, or the Abyssal orphan pet.",
+    gear: "Melee with some Magic for the spawns; antivenom and good positioning matter.",
+    supplies: ["Prayer potions", "Food", "Antivenom+"],
+    tips: "Locked behind 85 Slayer; the ironman source for the whip and the bludgeon.",
+  },
+  {
+    id: "thermy", name: "Thermonuclear Smoke Devil", cat: "Late", order: 21, womKey: "thermonuclear_smoke_devil",
+    skills: { slayer: 93, ranged: 75, defence: 60, prayer: 43 }, quests: [],
+    access: "93 Slayer; the Smoke Devil Dungeon. A dwarf multicannon helps clear the adds.",
+    reward: "Occult necklace (a major Magic damage boost), the Smoke battlestaff, and the pet.",
+    gear: "Ranged; bring a cannon if you have one, and Protect from Melee at close range.",
+    supplies: ["Prayer potions", "Food", "Cannon + cannonballs (optional)"],
+    tips: "Locked behind 93 Slayer; the occult necklace is a defining Magic upgrade.",
+  },
+  {
+    id: "armadyl", name: "God Wars — Armadyl", cat: "Late", order: 22, womKey: "kreearra",
+    skills: { ranged: 70, defence: 70, prayer: 43 }, quests: [],
+    access: "GWD; 70 Ranged to enter Armadyl's eyrie. Build killcount to face Kree'arra.",
+    reward: "Armadyl armour (best-in-slot ranged armour) and Godsword shards.",
+    gear: "Ranged only — Kree'arra and the minions are best handled at distance. Protect from Missiles.",
+    supplies: ["Prayer potions", "Food", "Ranging potions"],
+    tips: "70 Ranged gate; armadyl armour is a long-term ranged BiS set.",
+  },
+  {
+    id: "sara", name: "God Wars — Saradomin", cat: "Late", order: 23, womKey: "commander_zilyana",
+    skills: { agility: 70, attack: 75, strength: 75, defence: 70, prayer: 43 }, quests: [],
+    access: "GWD; 70 Agility to enter Saradomin's encampment. Build killcount to face Zilyana.",
+    reward: "Saradomin sword, the Armadyl crossbow, and Godsword shards.",
+    gear: "Melee the boss with ranged backup; protection prayers and brews smooth it out.",
+    supplies: ["Prayer potions", "Saradomin brews", "Food"],
+    tips: "70 Agility gate; the Saradomin sword and ACB are strong ironman upgrades.",
+  },
+  {
+    id: "zamorak", name: "God Wars — Zamorak", cat: "Late", order: 24, womKey: "kril_tsutsaroth",
+    skills: { hitpoints: 70, attack: 75, strength: 75, defence: 70, prayer: 43 }, quests: [],
+    access: "GWD; 70 Hitpoints to enter Zamorak's fortress. Build killcount to face K'ril Tsutsaroth.",
+    reward: "Staff of the dead, the Zamorakian spear, and Godsword shards.",
+    gear: "Melee with Protect from Melee; strong Magic defence helps against K'ril's special.",
+    supplies: ["Prayer potions", "Food"],
+    tips: "70 Hitpoints gate; the staff of the dead and zamorakian spear are excellent.",
+  },
+  {
+    id: "zalcano", name: "Zalcano", cat: "Late", order: 25, womKey: "zalcano",
+    skills: { mining: 70, smithing: 70, attack: 70, defence: 60, prayer: 43, runecrafting: 60 }, quests: ["Song of the Elves"],
+    access: "Prifddinas (Song of the Elves). A skilling-and-combat hybrid boss.",
+    reward: "Crystal tool seed, crystal shards, Smithing and Mining XP, soft clay packs, and the Smolcano pet.",
+    gear: "A pickaxe plus light combat gear — it's part skilling, part fighting.",
+    supplies: ["Food", "A pickaxe", "Stamina potions"],
+    tips: "Behind Song of the Elves; a steady source of crystal tool seeds and shards.",
+  },
+  {
+    id: "muspah", name: "Phantom Muspah", cat: "Late", order: 26, womKey: "phantom_muspah",
+    skills: { ranged: 80, magic: 80, defence: 75, prayer: 74 }, quests: ["Secrets of the North"],
+    access: "Requires Secrets of the North. The fight rotates between Ranged, Magic and Melee phases.",
+    reward: "Ancient sceptre (Ancient Magicks boost), the Venator shard (→ Venator bow), and charged ice.",
+    gear: "Bring Ranged and Magic and swap with its phases; prayer-flick the attacks.",
+    supplies: ["Prayer potions", "Food", "Stamina potions"],
+    tips: "Behind Secrets of the North; the venator bow and ancient sceptre are strong upgrades.",
+  },
+  {
+    id: "nightmare", name: "The Nightmare", cat: "Endgame", order: 27, womKey: "nightmare",
+    skills: { attack: 85, strength: 85, ranged: 85, magic: 85, defence: 80, prayer: 77 }, quests: [],
+    access: "Sisterhood Sanctuary in Morytania. Best in a team; Phosani's is the solo-only variant.",
+    reward: "Inquisitor's armour, the Nightmare staff, and the Harmonised, Volatile and Eldritch orbs — top melee and magic gear.",
+    gear: "Top melee or magic with high Prayer; learn the attack patterns and the totem phase.",
+    supplies: ["Prayer / restore potions", "Food (brews)", "Stamina potions"],
+    tips: "Great group content for your team; Phosani's solo is a serious endgame challenge.",
+  },
+  {
+    id: "dt2", name: "Desert Treasure II bosses", cat: "Endgame", order: 28, womKey: "vardorvis",
+    skills: { attack: 85, strength: 85, ranged: 85, magic: 85, defence: 80, prayer: 74 }, quests: ["Desert Treasure II - The Fallen Empire"],
+    access: "The four awakened bosses — Vardorvis, Duke Sucellus, the Leviathan and the Whisperer. Vardorvis is the friendliest start.",
+    reward: "Virtus robes, the Ancient rings (Ultor, Bellator, Magus, Venator), Awakener's orbs, and Soulreaper axe pieces — endgame BiS.",
+    gear: "Each boss favours different styles; high stats and steady Prayer throughout. Begin with Vardorvis.",
+    supplies: ["Prayer / restore potions", "Food", "Stamina potions"],
+    tips: "Behind Desert Treasure II; the Ancient rings and Virtus are major endgame upgrades.",
+  },
+  {
+    id: "colosseum", name: "Fortis Colosseum", cat: "Endgame", order: 29, womKey: "sol_heredit",
+    skills: { ranged: 85, hitpoints: 90, defence: 80, prayer: 77 }, quests: [],
+    access: "Varlamore. Twelve escalating waves ending with Sol Heredit — ranged-heavy and demanding.",
+    reward: "Dizana's quiver (ranged ammo storage and a strong cape), Sunfire fanatic armour, and Echo crystals.",
+    gear: "Best ranged plus Prayer and defensive switches, with careful supply management across the waves.",
+    supplies: ["Prayer potions", "Saradomin brews / restores", "Ranging potions"],
+    tips: "An endgame ranged gauntlet; Dizana's quiver is the headline reward.",
+  },
+  {
+    id: "corp", name: "Corporeal Beast", cat: "Endgame", order: 30, womKey: "corporeal_beast",
+    skills: { attack: 85, strength: 85, defence: 80, magic: 80, hitpoints: 85, prayer: 70 }, quests: [],
+    access: "Found in its lair beneath the Wilderness — notoriously tanky, and far faster with a team.",
+    reward: "Elysian, Spectral and Arcane sigils (best-in-slot shields; Spectral for Prayer), Holy elixir, pet.",
+    gear: "Crush/stab spec weapons that bypass its high defence (crystal halberd, BGS); Protect from Magic.",
+    supplies: ["Prayer / restore potions", "Saradomin brews / food", "Super combat for specs"],
+    tips: "A perfect Group Ironman target — split kills with your team to make the sigils realistic.",
+  },
+  {
+    id: "moons", name: "Moons of Peril", cat: "Mid", order: 31, womKey: "lunar_chests",
+    skills: { attack: 70, strength: 70, ranged: 70, magic: 70, defence: 70, prayer: 43 }, quests: ["Perilous Moons"],
+    access: "Neypotzli, Varlamore (Perilous Moons quest). Rotate through the Blue, Blood and Eclipse moon bosses.",
+    reward: "Blue/Blood/Eclipse moon armour and weapons (Dual macuahuitl, Blood moon spear, Eclipse atlatl) — superb mid-game ironman gear.",
+    gear: "All three styles across the fights; the armour you earn here upgrades you as you go.",
+    supplies: ["Prayer potions", "Food", "Stamina potions"],
+    tips: "One of the best mid-game ironman armour and weapon sources, and it scales gently.",
+  },
+  {
+    id: "wildy", name: "Wilderness Bosses", cat: "Late", order: 32, womKey: "callisto",
+    skills: { attack: 80, strength: 80, ranged: 80, defence: 70, prayer: 43 }, quests: [],
+    access: "Callisto, Vet'ion and Venenatis (plus the easier Artio, Calvar'ion and Spindel) — in the Wilderness, so expect PKers.",
+    reward: "Voidwaker pieces (a top-tier special-attack weapon), Ring of the gods, Treasonous/Tyrannical rings, fangs and claws, pets.",
+    gear: "Anti-PK setup — bring only what you can lose, a teleport, and gear for the boss's style.",
+    supplies: ["Prayer potions", "Food", "Teleport to escape", "Anti-PK switch (optional)"],
+    tips: "The Voidwaker is the headline — one piece drops from each of the three bosses. Watch for PKers.",
+  },
+  {
+    id: "araxxor", name: "Araxxor", cat: "Endgame", order: 33, womKey: "araxxor",
+    skills: { attack: 85, strength: 85, defence: 80, hitpoints: 85, prayer: 74 }, quests: [],
+    access: "The spider's lair beneath Morytania. Manage the web and acid-phase mechanics.",
+    reward: "Noxious halberd (from three point pieces), Amulet of rancour, Araxyte slayer helmet, pet.",
+    gear: "Melee with strong Prayer; learn the phases and the venom pools.",
+    supplies: ["Prayer / restore potions", "Food", "Antipoison / antivenom"],
+    tips: "The Amulet of rancour is a best-in-slot melee neck — a major endgame upgrade.",
+  },
 ];
 
 /* =============================== content: unlocks =============================== */
@@ -187,6 +376,24 @@ const UNLOCKS = [
   { id: "quiver", name: "Dizana's quiver", tier: "B", stage: "late", effect: "Ranged ammo storage plus a strong ranged cape in one slot.", source: "Fortis Colosseum." },
   { id: "imbuedheart", name: "Imbued heart", tier: "B", stage: "late", effect: "Periodic Magic level boost for spell damage and accuracy.", source: "Rare drop from superior Slayer monsters." },
   { id: "fairyrings", name: "Fairy ring access", tier: "B", stage: "early", effect: "A fast-travel network spanning the whole game.", source: "Fairytale II (partial completion enables full use)." },
+  { id: "fightertorso", name: "Fighter torso", tier: "A", stage: "mid", effect: "One of the best Strength-bonus body slots for a long time, and free to keep.", source: "Barbarian Assault honour points." },
+  { id: "fury", name: "Amulet of fury", tier: "A", stage: "mid", effect: "A strong all-round amulet balancing offence and defence across styles.", source: "Enchant an onyx amulet (onyx from Zalcano, demonic gorillas, or TzHaar shops)." },
+  { id: "torture", name: "Amulet of torture", tier: "A", stage: "late", effect: "Best-in-slot melee amulet.", source: "Enchant a zenyte (from demonic gorillas, the Gauntlet, or zenyte shards)." },
+  { id: "anguish", name: "Amulet of anguish", tier: "A", stage: "late", effect: "Best-in-slot ranged amulet.", source: "Enchant a zenyte." },
+  { id: "torm", name: "Tormented bracelet", tier: "A", stage: "late", effect: "Best-in-slot Magic damage bracelet.", source: "Enchant a zenyte." },
+  { id: "dkrings", name: "Imbued rings (Berserker / Archer / Seers)", tier: "A", stage: "late", effect: "Imbued Dagannoth Kings rings — top-tier stat rings for each style.", source: "Imbue the base rings at Nightmare Zone, Soul Wars, or PvP." },
+  { id: "brimstone", name: "Brimstone ring", tier: "A", stage: "late", effect: "A strong hybrid ring whose passive ignores some Magic defence.", source: "Combine Hydra's eye, fang and heart (Alchemical Hydra)." },
+  { id: "tomefire", name: "Tome of fire", tier: "B", stage: "mid", effect: "Boosts all fire spells by 50% — a big Magic damage spike on a budget.", source: "Wintertodt (burnt then searing pages)." },
+  { id: "neitiznot", name: "Helm of neitiznot", tier: "B", stage: "early", effect: "A cheap, well-rounded helmet that stays useful for a long time.", source: "The Fremennik Isles quest." },
+  { id: "devout", name: "Devout boots", tier: "B", stage: "late", effect: "Best Prayer-bonus boots.", source: "Combine holy sandals (a hard clue reward) with a Drake's claw (Karuulm)." },
+  { id: "zealot", name: "Zealot's robes", tier: "B", stage: "mid", effect: "Bonus Prayer XP when offering bones at a gilded altar.", source: "Shade chests in Mort'ton (Shades of Mort'ton)." },
+  { id: "gildedaltar", name: "Gilded altar (POH)", tier: "B", stage: "mid", effect: "A huge Prayer XP boost when training Prayer at your house.", source: "Construction (level 75) plus marble blocks." },
+  { id: "jewellerybox", name: "Ornate jewellery box (POH)", tier: "B", stage: "mid", effect: "One-click teleports to dozens of destinations straight from your house.", source: "Construction plus jewellery and components." },
+  { id: "eternalglory", name: "Eternal glory", tier: "B", stage: "late", effect: "Unlimited glory teleports and permanent glory stats — no recharging.", source: "Karamja Elite achievement diary." },
+  { id: "avernic", name: "Avernic defender", tier: "A", stage: "late", effect: "Best-in-slot melee defender, a clear step up from the dragon defender.", source: "Theatre of Blood (Avernic defender hilt) + a dragon defender." },
+  { id: "godcape", name: "Imbued god cape", tier: "A", stage: "late", effect: "Best magic cape until Dizana's quiver — strong Magic damage and accuracy.", source: "Mage Arena I & II miniquests." },
+  { id: "secateurs", name: "Magic secateurs", tier: "B", stage: "early", effect: "Boosts herb yield from farming patches — feeds your whole potion supply.", source: "Fairytale I - Growing Pains." },
+  { id: "coalbag", name: "Coal bag", tier: "B", stage: "early", effect: "Carries 27 coal — speeds up Smithing, Blast Furnace and bar runs.", source: "Prospector / Motherlode Mine reward shop." },
 ];
 const TIER_COLOR = { S: "var(--gold-bright)", A: "var(--azure-bright)", B: "var(--muted)" };
 
@@ -504,7 +711,7 @@ function BossModal({ boss, acct, doneQuests, toggleQuest, onClose }) {
 }
 
 /* =============================== unlocks tab =============================== */
-function UnlocksTab({ acct, onOpen }) {
+function UnlocksTab({ acct, onOpen, owned, toggleOwned }) {
   const stage = stageOf(acct);
   const [filter, setFilter] = useState("stage");
   const order = { S: 0, A: 1, B: 2 };
@@ -513,36 +720,45 @@ function UnlocksTab({ acct, onOpen }) {
     let l = [...UNLOCKS];
     if (filter === "S") l = l.filter((u) => u.tier === "S");
     else if (filter === "stage") l = l.filter((u) => u.stage === "any" || stageRank[u.stage] <= stageRank[stage]);
+    else if (filter === "missing") l = l.filter((u) => !owned.includes(u.id));
     return l.sort((x, y) => order[x.tier] - order[y.tier]);
-  }, [filter, stage]);
+  }, [filter, stage, owned]);
 
   return (
     <div className="tabwrap">
       <div className="tab-h"><Award size={18} /><h2 className="display">Unlocks</h2></div>
-      <div className="note thin"><Sparkles size={13} style={{ color: "var(--gold-bright)" }} /><span>The quality-of-life unlocks that multiply everything else. Ranked by impact — "For my stage" surfaces what's worth chasing at your level now.</span></div>
+      <div className="note thin"><Sparkles size={13} style={{ color: "var(--gold-bright)" }} /><span>The quality-of-life unlocks that multiply everything else. Tap the box to mark what you own — What's Next then stops suggesting it and points you at what you're still missing.</span></div>
 
       <div className="chips">
-        {[["stage", "For my stage"], ["S", "S-tier only"], ["all", "Everything"]].map(([k, l]) => (
+        {[["stage", "For my stage"], ["missing", "Missing"], ["S", "S-tier"], ["all", "Everything"]].map(([k, l]) => (
           <button key={k} className={"chip" + (filter === k ? " chip-on" : "")} onClick={() => setFilter(k)}>{l}</button>
         ))}
       </div>
+      <div className="browse-meta"><span className="mono">{owned.length} / {UNLOCKS.length} owned</span></div>
 
       <div className="ucards">
-        {list.map((u) => (
-          <button key={u.id} className="ucard" onClick={() => onOpen(u)}>
-            <span className="utier" style={{ color: TIER_COLOR[u.tier], borderColor: TIER_COLOR[u.tier] }}>{u.tier}</span>
-            <div className="umain">
-              <div className="uname">{u.name}</div>
-              <div className="ueffect">{u.effect}</div>
+        {list.map((u) => {
+          const has = owned.includes(u.id);
+          return (
+            <div key={u.id} className={"ucard" + (has ? " owned" : "")}>
+              <button className={"uown" + (has ? " on" : "")} onClick={() => toggleOwned(u.id)} title={has ? "Owned" : "Mark as owned"}>{has && <Check size={13} />}</button>
+              <button className="ucard-body" onClick={() => onOpen(u)}>
+                <span className="utier" style={{ color: TIER_COLOR[u.tier], borderColor: TIER_COLOR[u.tier] }}>{u.tier}</span>
+                <div className="umain">
+                  <div className="uname">{u.name}</div>
+                  <div className="ueffect">{u.effect}</div>
+                </div>
+                <ChevronRight size={15} className="uchev" />
+              </button>
             </div>
-            <ChevronRight size={15} className="uchev" />
-          </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
-function UnlockModal({ unlock, onClose }) {
+function UnlockModal({ unlock, onClose, owned, toggleOwned }) {
+  const has = owned.includes(unlock.id);
   return (
     <div className="overlay" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -558,6 +774,7 @@ function UnlockModal({ unlock, onClose }) {
         </div>
         <div className="info-sec"><div className="info-h"><Star size={13} style={{ color: "var(--gold-bright)" }} /> What it does</div><p>{unlock.effect}</p></div>
         <div className="info-sec"><div className="info-h"><Compass size={13} style={{ color: "var(--azure-bright)" }} /> How to get it</div><p>{unlock.source}</p></div>
+        <button className={"own-btn" + (has ? " on" : "")} onClick={() => toggleOwned(unlock.id)}>{has ? <><Check size={14} /> Owned — tap to undo</> : "Mark as owned"}</button>
       </div>
     </div>
   );
@@ -712,7 +929,7 @@ const BOSS_VALUE = { Early: 10, Mid: 20, Late: 30, Endgame: 40 };
 const ESTABLISHED_KC = 25;       // above this you've clearly "started" a boss
 const ONE_OFF = ["tztok_jad", "tzkal_zuk"]; // capes you earn once, not farmed
 
-function computeNextSteps(acct, doneQuests, doneDiaries, doneMinigames) {
+function computeNextSteps(acct, doneQuests, doneDiaries, doneMinigames, ownedUnlocks) {
   const stage = stageOf(acct);
   const moves = [];
   const skillTally = {}; // skillKey -> { weight, label }
@@ -779,6 +996,21 @@ function computeNextSteps(acct, doneQuests, doneDiaries, doneMinigames) {
     moves.push({ id: "diary-" + d.area, tag: "Diary", tone: "azure", goContext: true, title: `${d.area} ${d.tier} diary`, why: d.why, score: 52 });
   });
 
+  // high-value QoL unlocks you don't own yet (capped so they don't crowd the list)
+  const uOrder = { S: 0, A: 1, B: 2 };
+  const uStageRank = { early: 0, mid: 1, late: 2, any: 1 };
+  UNLOCKS
+    .filter((u) => u.tier !== "B" && !(ownedUnlocks || []).includes(u.id) && uStageRank[u.stage] <= STAGE_RANK[stage])
+    .sort((a, b) => uOrder[a.tier] - uOrder[b.tier])
+    .slice(0, 3)
+    .forEach((u) => {
+      moves.push({
+        id: "unlock-" + u.id, tag: "Unlock", tone: "azure", goUnlocks: true,
+        title: `Get ${u.name}`, why: `${u.effect} ${u.source}`,
+        score: u.tier === "S" ? 68 : 58,
+      });
+    });
+
   moves.sort((x, y) => y.score - x.score);
 
   // bottleneck: the skill gating the most (value-weighted) content
@@ -797,10 +1029,10 @@ function computeNextSteps(acct, doneQuests, doneDiaries, doneMinigames) {
   return { moves: moves.slice(0, 6), bottleneck, stage };
 }
 
-function NextTab({ acct, doneQuests, doneDiaries, doneMinigames, onOpenBoss, onGoContext }) {
+function NextTab({ acct, doneQuests, doneDiaries, doneMinigames, ownedUnlocks, onOpenBoss, onGoContext, onGoUnlocks }) {
   const { moves, bottleneck } = useMemo(
-    () => computeNextSteps(acct, doneQuests, doneDiaries, doneMinigames),
-    [acct, doneQuests, doneDiaries, doneMinigames]
+    () => computeNextSteps(acct, doneQuests, doneDiaries, doneMinigames, ownedUnlocks),
+    [acct, doneQuests, doneDiaries, doneMinigames, ownedUnlocks]
   );
   return (
     <div className="tabwrap">
@@ -820,7 +1052,7 @@ function NextTab({ acct, doneQuests, doneDiaries, doneMinigames, onOpenBoss, onG
       {moves.length ? (
         <div className="moves">
           {moves.map((m, i) => (
-            <button key={m.id} className="move" onClick={() => (m.boss ? onOpenBoss(m.boss) : onGoContext())}>
+            <button key={m.id} className="move" onClick={() => (m.boss ? onOpenBoss(m.boss) : m.goUnlocks ? onGoUnlocks() : onGoContext())}>
               <span className="move-rank mono">{i + 1}</span>
               <div className="move-main">
                 <div className="move-top"><span className="move-title">{m.title}</span><span className={"mtag mtag-" + m.tone}>{m.tag}</span></div>
@@ -867,10 +1099,12 @@ export default function Lodestar({ onHome }) {
   const [doneDiaries, setDoneDiaries] = usePersistent("lodestar.diaries", []);
   const [doneMinigames, setDoneMinigames] = usePersistent("lodestar.minigames", []);
   const [gp, setGp] = usePersistent("lodestar.gp", "");
+  const [ownedUnlocks, setOwnedUnlocks] = usePersistent("lodestar.unlocks", []);
   const [boss, setBoss] = useState(null);
   const [unlock, setUnlock] = useState(null);
 
   const toggleQuest = (q) => setDoneQuests((p) => (p.includes(q) ? p.filter((x) => x !== q) : [...p, q]));
+  const toggleOwned = (id) => setOwnedUnlocks((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   // For the sample account, treat its implied quests as done so readiness/next read coherently.
   // Real accounts use only the user's confirmed quests; this never writes to the saved store.
   const dq = acct?.sample && acct.quests ? Array.from(new Set([...doneQuests, ...acct.quests])) : doneQuests;
@@ -920,16 +1154,16 @@ export default function Lodestar({ onHome }) {
           )}
         </header>
 
-        {tab === "next" && <NextTab acct={acct} doneQuests={doneQuests} doneDiaries={doneDiaries} doneMinigames={doneMinigames} onOpenBoss={setBoss} onGoContext={() => setTab("context")} />}
+        {tab === "next" && <NextTab acct={acct} doneQuests={doneQuests} doneDiaries={doneDiaries} doneMinigames={doneMinigames} ownedUnlocks={ownedUnlocks} onOpenBoss={setBoss} onGoContext={() => setTab("context")} onGoUnlocks={() => setTab("unlocks")} />}
         {tab === "snapshot" && <SnapshotTab acct={acct} loading={loading} error={error} rsn={rsn} setRsn={setRsn} onLoad={() => loadAccount(rsn)} />}
         {tab === "context" && <ContextTab acct={acct} doneQuests={doneQuests} setDoneQuests={setDoneQuests} doneDiaries={doneDiaries} setDoneDiaries={setDoneDiaries} doneMinigames={doneMinigames} setDoneMinigames={setDoneMinigames} gp={gp} setGp={setGp} />}
         {tab === "readiness" && <ReadinessTab acct={acct} doneQuests={doneQuests} toggleQuest={toggleQuest} onOpen={setBoss} />}
-        {tab === "unlocks" && <UnlocksTab acct={acct} onOpen={setUnlock} />}
+        {tab === "unlocks" && <UnlocksTab acct={acct} onOpen={setUnlock} owned={ownedUnlocks} toggleOwned={toggleOwned} />}
       </div>
 
       <BottomNav tab={tab} setTab={setTab} />
       {boss && <BossModal boss={boss} acct={acct} doneQuests={doneQuests} toggleQuest={toggleQuest} onClose={() => setBoss(null)} />}
-      {unlock && <UnlockModal unlock={unlock} onClose={() => setUnlock(null)} />}
+      {unlock && <UnlockModal unlock={unlock} onClose={() => setUnlock(null)} owned={ownedUnlocks} toggleOwned={toggleOwned} />}
     </div>
   );
 }
@@ -1056,14 +1290,22 @@ const CSS = `
 .sup-chip{font-size:11.5px;font-weight:500;padding:5px 10px;border-radius:8px;background:rgba(72,221,150,.08);border:1px solid rgba(72,221,150,.18);color:var(--ready)}
 
 .ucards{display:flex;flex-direction:column;gap:9px}
-.ucard{display:flex;align-items:center;gap:13px;width:100%;text-align:left;cursor:pointer;background:linear-gradient(150deg,var(--card2),var(--card));border:1px solid var(--line2);border-radius:14px;padding:13px 15px;color:var(--text);font-family:'Sora';transition:.16s}
-.ucard:hover{border-color:var(--line);transform:translateY(-2px)}
+.ucard{display:flex;align-items:center;gap:0;width:100%;background:linear-gradient(150deg,var(--card2),var(--card));border:1px solid var(--line2);border-radius:14px;transition:.16s}
+.ucard:hover{border-color:var(--line)}
+.ucard.owned{opacity:.5}
+.uown{flex-shrink:0;align-self:center;width:24px;height:24px;margin-left:14px;border-radius:7px;border:1.5px solid var(--muted2);background:transparent;display:grid;place-items:center;cursor:pointer;color:#06231a;transition:.13s}
+.uown:hover{border-color:var(--ready)}
+.uown.on{background:var(--ready);border-color:var(--ready)}
+.ucard-body{flex:1;display:flex;align-items:center;gap:13px;min-width:0;padding:13px 15px;background:none;border:none;cursor:pointer;text-align:left;color:var(--text);font-family:'Sora'}
 .utier{flex-shrink:0;width:30px;height:30px;border-radius:8px;border:1.5px solid;display:grid;place-items:center;font-family:'Cinzel';font-weight:700;font-size:15px}
 .utier.big{width:44px;height:44px;font-size:22px;border-radius:11px}
 .umain{flex:1;min-width:0}
 .uname{font-weight:600;font-size:14.5px}
 .ueffect{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}
 .uchev{color:var(--muted2);flex-shrink:0}
+.own-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:18px;padding:12px;border-radius:11px;border:1px solid var(--line2);background:var(--card);color:var(--muted);font-family:'Sora';font-size:13.5px;font-weight:600;cursor:pointer;transition:.16s}
+.own-btn:hover{color:var(--text);border-color:var(--line)}
+.own-btn.on{background:rgba(72,221,150,.1);border-color:rgba(72,221,150,.3);color:var(--ready)}
 
 .overlay{position:fixed;inset:0;z-index:50;background:rgba(5,7,10,.72);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;animation:fadeo .2s ease}
 @keyframes fadeo{from{opacity:0}to{opacity:1}}
