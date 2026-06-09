@@ -5,8 +5,9 @@ import {
   ArrowUpRight, ArrowDownRight, Flame, Boxes, SlidersHorizontal, Coins, LayoutGrid,
   LineChart, Wallet, Wrench, Bell, Timer, Calculator, Plus, Trash2, Sparkles,
   AlertTriangle, Minus, Clock, Target, ArrowLeft, Swords, GraduationCap, Skull,
-  Compass, Package, ChevronRight, Gauge
+  Compass, Package, ChevronRight, Gauge, Map
 } from "lucide-react";
+import Lodestar from "./Lodestar.jsx";
 
 /* =============================== helpers =============================== */
 
@@ -1390,11 +1391,11 @@ function Coffer({ onHome }) {
 /* =============================== launcher (hub) =============================== */
 const TOOLS = [
   { k: "coffer", live: true, name: "Coffer", tag: "Grand Exchange Intelligence", desc: "Flip finder, decision engine, forecasts, profit tracker and trading tools for the GE.", icon: <Coins size={22} />, accent: "var(--gold-bright)" },
+  { k: "lodestar", live: true, name: "Lodestar", tag: "Ironman Progression", desc: "What to do next, readiness checks for every milestone boss, and the QoL unlocks that matter — built for ironmen.", icon: <Compass size={22} />, accent: "#5cc8ff" },
   { k: "drops", live: false, name: "Drop Ledger", tag: "Boss & raid profit", desc: "Log kills and drops, track GP/hour and splits, and see your real loot luck over time.", icon: <Skull size={22} />, accent: "#c98bff" },
   { k: "dps", live: false, name: "Gear & DPS Lab", tag: "Combat optimiser", desc: "Compare setups, max hits and DPS against any monster to find your best loadout.", icon: <Swords size={22} />, accent: "#ff8a93" },
   { k: "skill", live: false, name: "Skill Planner", tag: "XP routes & costs", desc: "Fastest and cheapest training paths, with live material costs from the GE.", icon: <GraduationCap size={22} />, accent: "#7fd6e8" },
-  { k: "clue", live: false, name: "Clue Companion", tag: "Treasure trails", desc: "Step lookups, reward odds and expected value per casket tier.", icon: <Compass size={22} />, accent: "#48dd96" },
-  { k: "diary", live: false, name: "Diary & Quest Planner", tag: "Account progression", desc: "Track requirements and map the optimal order to knock out diaries and quests.", icon: <Package size={22} />, accent: "#f6cf6b" },
+  { k: "clue", live: false, name: "Clue Companion", tag: "Treasure trails", desc: "Step lookups, reward odds and expected value per casket tier.", icon: <Map size={22} />, accent: "#48dd96" },
 ];
 function Launcher({ onOpen }) {
   return (
@@ -1433,6 +1434,7 @@ function Launcher({ onOpen }) {
 export default function App() {
   const [view, setView] = useState("home");
   if (view === "coffer") return <Coffer onHome={() => setView("home")} />;
+  if (view === "lodestar") return <Lodestar onHome={() => setView("home")} />;
   return <Launcher onOpen={(k) => setView(k)} />;
 }
 
