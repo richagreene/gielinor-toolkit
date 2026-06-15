@@ -5,7 +5,7 @@ import { SORTS, PRESETS } from "./coffer-engine.js";
 
 /* >>> EDIT THIS <<<  your GitHub "owner/repo" (the repo must be PUBLIC so the
    raw feed URL is fetchable from the browser without a token). */
-const OWNER_REPO = "OWNER/REPO";
+const OWNER_REPO = "richagreene/gielinor-toolkit";
 const DATA_URL = `https://raw.githubusercontent.com/${OWNER_REPO}/data/flips.json`;
 
 export async function fetchFeed() {
