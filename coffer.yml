@@ -1,0 +1,37 @@
+name: Coffer flip feed
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 min (GitHub's free cron is best-effort; may run slightly late)
+  workflow_dispatch: {}        # lets you run it on demand from the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: coffer-feed
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build flip feed
+        run: node pipeline/build-flips.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Publish feed to the data branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          publish_branch: data
+          force_orphan: true            # keep the data branch a single clean commit
+          commit_message: "feed update"
