@@ -23,7 +23,7 @@ jobs:
           node-version: 22
 
       - name: Build flip feed
-        run: node pipeline/build-flips.mjs
+        run: node pipeline/build_flips.mjs
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
