@@ -313,9 +313,9 @@ const BASE = "https://prices.runescape.wiki/api/v1/osrs";
 
 /* >>> EDIT THIS <<<  The OSRS Wiki asks API users for a descriptive
    User-Agent with a way to contact you. Put your RSN or email here. */
-const UA = "gielinor-toolkit flip analytics - contact: athleticthief@yahoo.com";
+const UA = "Coffer flip-analytics — contact: YOUR_RSN_OR_EMAIL";
 
-const REPO = process.env.GITHUB_REPOSITORY || "richagreene/gielinor-toolkit";
+const REPO = process.env.GITHUB_REPOSITORY || "OWNER/REPO";
 const DATA_BRANCH = "data";
 const HISTORY_URL = `https://raw.githubusercontent.com/${REPO}/${DATA_BRANCH}/history.json`;
 
@@ -389,6 +389,15 @@ export async function main() {
   mkdirSync("out", { recursive: true });
   writeFileSync("out/flips.json", JSON.stringify({ generatedAt: now, count: rows.length, universe: items.length, items: rows }));
   writeFileSync("out/history.json", JSON.stringify(history));
+
+  // prices.json — compact item-name → {high, low, vol} for the other apps (Harvest, etc.)
+  const priceByName = {};
+  for (const m of mapping) {
+    const lp = L[String(m.id)]; if (!lp) continue;
+    const v = H24[String(m.id)] || {};
+    priceByName[String(m.name).toLowerCase()] = { high: lp.high ?? null, low: lp.low ?? null, vol: (v.highPriceVolume || 0) + (v.lowPriceVolume || 0) };
+  }
+  writeFileSync("out/prices.json", JSON.stringify(priceByName));
   console.log(`[coffer] ${rows.length} flips / ${items.length} items · history ${Object.keys(history).length} · ${new Date(now * 1000).toISOString()}`);
 }
 
