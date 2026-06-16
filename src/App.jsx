@@ -5,10 +5,11 @@ import {
   ArrowUpRight, ArrowDownRight, Flame, Boxes, SlidersHorizontal, Coins, LayoutGrid,
   LineChart, Wallet, Wrench, Bell, Timer, Calculator, Plus, Trash2, Sparkles,
   AlertTriangle, Minus, Clock, Target, ArrowLeft, Swords, GraduationCap, Skull,
-  Compass, Package, ChevronRight, Gauge, Map
+  Compass, Package, ChevronRight, Gauge, Map, Sprout
 } from "lucide-react";
 import Lodestar from "./Lodestar.jsx";
 import Flips from "./Flips.jsx";
+import Harvest from "./Harvest.jsx";
 
 /* =============================== helpers =============================== */
 
@@ -1392,6 +1393,7 @@ function Coffer({ onHome }) {
 /* =============================== launcher (hub) =============================== */
 const TOOLS = [
   { k: "flips", live: true, name: "Flips", tag: "Live Flip Finder", desc: "A live, ranked feed of flips that actually fill — screened and priced by a quant engine for fill probability, liquidity and real margin.", icon: <TrendingUp size={22} />, accent: "#48dd96" },
+  { k: "harvest", live: true, name: "Harvest", tag: "Tree & Herb Runs", desc: "Plans your herb and tree runs from live GE prices and your levels — best crop to plant, full shopping list, and honest gp.", icon: <Sprout size={22} />, accent: "#5fd07f" },
   { k: "lodestar", live: true, name: "Lodestar", tag: "Ironman Progression", desc: "What to do next, readiness checks for every milestone boss, and the QoL unlocks that matter — built for ironmen.", icon: <Compass size={22} />, accent: "#5cc8ff" },
   { k: "drops", live: false, name: "Drop Ledger", tag: "Boss & raid profit", desc: "Log kills and drops, track GP/hour and splits, and see your real loot luck over time.", icon: <Skull size={22} />, accent: "#c98bff" },
   { k: "dps", live: false, name: "Gear & DPS Lab", tag: "Combat optimiser", desc: "Compare setups, max hits and DPS against any monster to find your best loadout.", icon: <Swords size={22} />, accent: "#ff8a93" },
@@ -1436,6 +1438,7 @@ export default function App() {
   const [view, setView] = useState("home");
   useEffect(() => { try { window.scrollTo(0, 0); } catch (e) {} }, [view]);
   if (view === "flips") return <Flips onHome={() => setView("home")} />;
+  if (view === "harvest") return <Harvest onHome={() => setView("home")} />;
   if (view === "lodestar") return <Lodestar onHome={() => setView("home")} />;
   return <Launcher onOpen={(k) => setView(k)} />;
 }
