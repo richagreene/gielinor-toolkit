@@ -1391,7 +1391,6 @@ function Coffer({ onHome }) {
 
 /* =============================== launcher (hub) =============================== */
 const TOOLS = [
-  { k: "coffer", live: true, name: "Coffer", tag: "Grand Exchange Intelligence", desc: "Flip finder, decision engine, forecasts, profit tracker and trading tools for the GE.", icon: <Coins size={22} />, accent: "var(--gold-bright)" },
   { k: "flips", live: true, name: "Flips", tag: "Live Flip Finder", desc: "A live, ranked feed of flips that actually fill — screened and priced by a quant engine for fill probability, liquidity and real margin.", icon: <TrendingUp size={22} />, accent: "#48dd96" },
   { k: "lodestar", live: true, name: "Lodestar", tag: "Ironman Progression", desc: "What to do next, readiness checks for every milestone boss, and the QoL unlocks that matter — built for ironmen.", icon: <Compass size={22} />, accent: "#5cc8ff" },
   { k: "drops", live: false, name: "Drop Ledger", tag: "Boss & raid profit", desc: "Log kills and drops, track GP/hour and splits, and see your real loot luck over time.", icon: <Skull size={22} />, accent: "#c98bff" },
@@ -1436,7 +1435,6 @@ function Launcher({ onOpen }) {
 export default function App() {
   const [view, setView] = useState("home");
   useEffect(() => { try { window.scrollTo(0, 0); } catch (e) {} }, [view]);
-  if (view === "coffer") return <Coffer onHome={() => setView("home")} />;
   if (view === "flips") return <Flips onHome={() => setView("home")} />;
   if (view === "lodestar") return <Lodestar onHome={() => setView("home")} />;
   return <Launcher onOpen={(k) => setView(k)} />;
