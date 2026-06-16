@@ -1,62 +1,77 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, RefreshCw, Coins, Sprout, TreePine, Info, ChevronDown, Leaf, AlertTriangle, Navigation, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, RefreshCw, Coins, Sprout, TreePine, Info, ChevronDown, Leaf, AlertTriangle, Navigation, ArrowUpRight, Clock, Target } from "lucide-react";
 
 /* ============================================================
    Harvest — tree & herb run planner.
    Prices: shared prices.json from the pipeline (item-name → {high,low}).
-   Levels: Wise Old Man (manual fallback).
+   Levels: Wise Old Man (manual fallback). Last RSN persists + auto-loads.
    Yield: verified OSRS "harvest lives" model. Per-herb chance-to-save
    values are wiki-pinned (level-1 → 31.6% at level 99 for every herb).
    Tree check-health/plant XP and protection payments are wiki-verified.
    ============================================================ */
 const OWNER_REPO = "richagreene/gielinor-toolkit";
 const DATA_URL = `https://raw.githubusercontent.com/${OWNER_REPO}/data/prices.json`;
+const SAVE_KEY = "harvest.v1";
 
-/* ---------- yield model ---------- */
 const LIVES = { none: 3, compost: 4, super: 5, ultra: 6 };
-const CTS_HIGH = 0.316;   // level-99 chance-to-save, identical for all herbs (wiki)
+const CTS_HIGH = 0.316;
 
-/* ---------- herb patches (ordered for an efficient run) ---------- */
+/* OSRS cumulative XP per level (index = level) */
+const XP_TABLE = [0,0,83,174,276,388,512,650,801,969,1154,1358,1584,1833,2107,2411,2746,3115,3523,3973,4470,5018,5624,6291,7028,7842,8740,9730,10824,12031,13363,14833,16456,18247,20224,22406,24815,27473,30408,33648,37224,41171,45529,50339,55649,61512,67983,75127,83014,91721,101333,111945,123660,136594,150872,166636,184040,203254,224466,247886,273742,302288,333804,368599,407015,449428,496254,547953,605032,668051,737627,814445,899257,992895,1096278,1210421,1336443,1475581,1629200,1798808,1986068,2192818,2421087,2673114,2951373,3258594,3597792,3972294,4385776,4842295,5346332,5902831,6517253,7195629,7944614,8771558,9684577,10692629,11805606,13034431];
+
 const HERB_PATCHES = [
-  { id: "ardougne",   name: "Ardougne",            unlock: "open",   diary: null,      save: 0,    tele: "Ardougne cloak / Ardy Teleport" },
+  { id: "ardougne",   name: "Ardougne",            unlock: "open",   diary: null,      save: 0,    tele: "Ardougne cloak / Ardy Tele" },
   { id: "catherby",   name: "Catherby",            unlock: "open",   diary: "kandarin",save: 0,    tele: "Catherby tablet / Camelot" },
-  { id: "falador",    name: "Falador",             unlock: "open",   diary: null,      save: 0,    tele: "Explorer's ring / Fally Teleport" },
+  { id: "falador",    name: "Falador",             unlock: "open",   diary: null,      save: 0,    tele: "Explorer's ring / Fally Tele" },
   { id: "morytania",  name: "Morytania",           unlock: "open",   diary: null,      save: 0,    tele: "Ectophial" },
   { id: "hosidius",   name: "Hosidius",            unlock: "favour", diary: "kourend", save: 0.05, diseaseFree: true, tele: "Xeric's talisman" },
-  { id: "guild65",    name: "Farming Guild",       unlock: "guild65",diary: "kourend", save: 0.05, tele: "Skills necklace / Farming cape" },
+  { id: "guild65",    name: "Farming Guild",       unlock: "guild65",diary: "kourend", save: 0.05, tele: "Skills necklace / Farm cape" },
   { id: "weiss",      name: "Weiss",               unlock: "quest",  diary: null,      save: 0,    diseaseFree: true, tele: "Icy basalt" },
-  { id: "trollheim",  name: "Trollheim",           unlock: "quest",  diary: null,      save: 0,    diseaseFree: true, tele: "Stony basalt / Trollheim Tele" },
-  { id: "harmony",    name: "Harmony Island",      unlock: "quest",  diary: null,      save: 0,    tele: "Harmony teleport (POH board)" },
-  { id: "varlamore",  name: "Civitas illa Fortis", unlock: "quest",  diary: null,      save: 0,    tele: "Civitas illa Fortis Teleport" },
+  { id: "trollheim",  name: "Trollheim",           unlock: "quest",  diary: null,      save: 0,    diseaseFree: true, tele: "Stony basalt" },
+  { id: "harmony",    name: "Harmony Island",      unlock: "quest",  diary: null,      save: 0,    tele: "Harmony teleport (POH)" },
+  { id: "varlamore",  name: "Civitas illa Fortis", unlock: "quest",  diary: null,      save: 0,    tele: "Civitas Teleport" },
 ];
 
-/* ---------- herbs: cts = [level-1 chance, level-99 chance], wiki-pinned ---------- */
 const HERBS = [
-  { key: "guam",       name: "Guam",        farm: 9,  cts: [0.102, CTS_HIGH], seed: "Guam seed",        herb: "Grimy guam leaf",   potion: { key: "attack",    name: "Attack potion",   herb: 1  } },
-  { key: "marrentill", name: "Marrentill",  farm: 14, cts: [0.113, CTS_HIGH], seed: "Marrentill seed",  herb: "Grimy marrentill",  potion: { key: "antipoison",name: "Antipoison",      herb: 5  } },
-  { key: "tarromin",   name: "Tarromin",    farm: 19, cts: [0.125, CTS_HIGH], seed: "Tarromin seed",    herb: "Grimy tarromin",    potion: { key: "strength",  name: "Strength potion", herb: 12 } },
-  { key: "harralander",name: "Harralander", farm: 26, cts: [0.145, CTS_HIGH], seed: "Harralander seed", herb: "Grimy harralander", potion: { key: "energy",    name: "Energy potion",   herb: 26 } },
-  { key: "ranarr",     name: "Ranarr",      farm: 32, cts: [0.156, CTS_HIGH], seed: "Ranarr seed",      herb: "Grimy ranarr weed", potion: { key: "prayer",    name: "Prayer potion",   herb: 38 } },
-  { key: "toadflax",   name: "Toadflax",    farm: 38, cts: [0.172, CTS_HIGH], seed: "Toadflax seed",    herb: "Grimy toadflax",    potion: { key: "brew",      name: "Saradomin brew",  herb: 81 } },
-  { key: "irit",       name: "Irit",        farm: 44, cts: [0.184, CTS_HIGH], seed: "Irit seed",        herb: "Grimy irit leaf",   potion: { key: "superatt",  name: "Super attack",    herb: 45 } },
-  { key: "avantoe",    name: "Avantoe",     farm: 50, cts: [0.199, CTS_HIGH], seed: "Avantoe seed",     herb: "Grimy avantoe",     potion: { key: "energy2",   name: "Super energy",    herb: 52 } },
-  { key: "kwuarm",     name: "Kwuarm",      farm: 56, cts: [0.215, CTS_HIGH], seed: "Kwuarm seed",      herb: "Grimy kwuarm",      potion: { key: "superstr",  name: "Super strength",  herb: 55 } },
-  { key: "snapdragon", name: "Snapdragon",  farm: 62, cts: [0.227, CTS_HIGH], seed: "Snapdragon seed",  herb: "Grimy snapdragon",  potion: { key: "restore",   name: "Super restore",   herb: 63 } },
-  { key: "cadantine",  name: "Cadantine",   farm: 67, cts: [0.238, CTS_HIGH], seed: "Cadantine seed",   herb: "Grimy cadantine",   potion: { key: "superdef",  name: "Super defence",   herb: 66 } },
-  { key: "lantadyme",  name: "Lantadyme",   farm: 73, cts: [0.254, CTS_HIGH], seed: "Lantadyme seed",   herb: "Grimy lantadyme",   potion: { key: "antifire",  name: "Antifire potion", herb: 69 } },
-  { key: "dwarf",      name: "Dwarf weed",  farm: 79, cts: [0.266, CTS_HIGH], seed: "Dwarf weed seed",  herb: "Grimy dwarf weed",  potion: { key: "ranging",   name: "Ranging potion",  herb: 72 } },
-  { key: "torstol",    name: "Torstol",     farm: 85, cts: [0.281, CTS_HIGH], seed: "Torstol seed",     herb: "Grimy torstol",     potion: { key: "supercb",   name: "Super combat",    herb: 90 } },
+  { key: "guam",       name: "Guam",        farm: 9,  cts: [0.102, CTS_HIGH], seed: "Guam seed",        herb: "Grimy guam leaf" },
+  { key: "marrentill", name: "Marrentill",  farm: 14, cts: [0.113, CTS_HIGH], seed: "Marrentill seed",  herb: "Grimy marrentill" },
+  { key: "tarromin",   name: "Tarromin",    farm: 19, cts: [0.125, CTS_HIGH], seed: "Tarromin seed",    herb: "Grimy tarromin" },
+  { key: "harralander",name: "Harralander", farm: 26, cts: [0.145, CTS_HIGH], seed: "Harralander seed", herb: "Grimy harralander" },
+  { key: "ranarr",     name: "Ranarr",      farm: 32, cts: [0.156, CTS_HIGH], seed: "Ranarr seed",      herb: "Grimy ranarr weed" },
+  { key: "toadflax",   name: "Toadflax",    farm: 38, cts: [0.172, CTS_HIGH], seed: "Toadflax seed",    herb: "Grimy toadflax" },
+  { key: "irit",       name: "Irit",        farm: 44, cts: [0.184, CTS_HIGH], seed: "Irit seed",        herb: "Grimy irit leaf" },
+  { key: "avantoe",    name: "Avantoe",     farm: 50, cts: [0.199, CTS_HIGH], seed: "Avantoe seed",     herb: "Grimy avantoe" },
+  { key: "kwuarm",     name: "Kwuarm",      farm: 56, cts: [0.215, CTS_HIGH], seed: "Kwuarm seed",      herb: "Grimy kwuarm" },
+  { key: "snapdragon", name: "Snapdragon",  farm: 62, cts: [0.227, CTS_HIGH], seed: "Snapdragon seed",  herb: "Grimy snapdragon" },
+  { key: "cadantine",  name: "Cadantine",   farm: 67, cts: [0.238, CTS_HIGH], seed: "Cadantine seed",   herb: "Grimy cadantine" },
+  { key: "lantadyme",  name: "Lantadyme",   farm: 73, cts: [0.254, CTS_HIGH], seed: "Lantadyme seed",   herb: "Grimy lantadyme" },
+  { key: "dwarf",      name: "Dwarf weed",  farm: 79, cts: [0.266, CTS_HIGH], seed: "Dwarf weed seed",  herb: "Grimy dwarf weed" },
+  { key: "torstol",    name: "Torstol",     farm: 85, cts: [0.281, CTS_HIGH], seed: "Torstol seed",     herb: "Grimy torstol" },
 ];
 
-/* ---------- trees (XP = plant + check-health total; protection wiki-verified) ---------- */
-const TREES = [   // regular tree patches
+/* self-supply: only potions actually used. Each maps to the herb you grow + its Herblore req. */
+const POTIONS = [
+  { key: "prayer",    name: "Prayer",        herb: "ranarr",     hReq: 38 },
+  { key: "restore",   name: "Super restore", herb: "snapdragon", hReq: 63 },
+  { key: "brew",      name: "Saradomin brew",herb: "toadflax",   hReq: 81 },
+  { key: "supercb",   name: "Super combat",  herb: "torstol",    hReq: 90 },
+  { key: "superatt",  name: "Super attack",  herb: "irit",       hReq: 45 },
+  { key: "superstr",  name: "Super strength",herb: "kwuarm",     hReq: 55 },
+  { key: "superdef",  name: "Super defence", herb: "cadantine",  hReq: 66 },
+  { key: "stamina",   name: "Stamina",       herb: "avantoe",    hReq: 77, note: "via super energy + amylase" },
+  { key: "antifire",  name: "Antifire",      herb: "lantadyme",  hReq: 69 },
+  { key: "ranging",   name: "Ranging",       herb: "dwarf",      hReq: 72 },
+  { key: "antivenom", name: "Antivenom+",    herb: "irit",       hReq: 87, note: "super antipoison + Zulrah scales" },
+];
+
+const TREES = [
   { key: "oak",   name: "Oak",   farm: 15, sapling: "Oak sapling",   xp: 481.3,   protect: { item: "Tomatoes(5)", qty: 1 } },
   { key: "willow",name: "Willow",farm: 30, sapling: "Willow sapling",xp: 1481.5,  protect: { item: "Apples(5)",   qty: 1 } },
   { key: "maple", name: "Maple", farm: 45, sapling: "Maple sapling", xp: 3448.4,  protect: { item: "Oranges(5)",  qty: 1 } },
   { key: "yew",   name: "Yew",   farm: 60, sapling: "Yew sapling",   xp: 7150.9,  protect: { item: "Cactus spine",qty: 10 } },
   { key: "magic", name: "Magic", farm: 75, sapling: "Magic sapling", xp: 13913.8, protect: { item: "Coconut",     qty: 25 } },
 ];
-const HARDWOODS = [   // hardwood patches — run with ultracompost, protection usually skipped
+const HARDWOODS = [
   { key: "teak",     name: "Teak",     farm: 35, sapling: "Teak sapling",     xp: 7325.0 },
   { key: "mahogany", name: "Mahogany", farm: 55, sapling: "Mahogany sapling", xp: 15783.0 },
 ];
@@ -72,30 +87,19 @@ const FRUIT = [
   { key: "dragon",    name: "Dragonfruit",farm: 81, sapling: "Dragonfruit sapling",xp: 18055.5, protect: { item: "Coconut",         qty: 15 } },
 ];
 
-/* tree-run patch routes (for teleport ordering) */
 const TREE_PATCHES = [
-  { name: "Gnome Stronghold", tele: "Spirit tree" },
-  { name: "Tree Gnome Village", tele: "Spirit tree" },
-  { name: "Falador", tele: "Explorer's ring / Fally Tele" },
-  { name: "Taverley", tele: "Games necklace (Burthorpe)" },
-  { name: "Varrock", tele: "Varrock Teleport (GE)" },
-  { name: "Lumbridge", tele: "Lumbridge Teleport", unlock: "guild65inv" },
-  { name: "Farming Guild", tele: "Skills necklace / Farming cape", unlock: "guild65" },
+  { name: "Gnome Stronghold", tele: "Spirit tree" }, { name: "Tree Gnome Village", tele: "Spirit tree" },
+  { name: "Falador", tele: "Explorer's ring" }, { name: "Taverley", tele: "Games necklace" },
+  { name: "Varrock", tele: "Varrock Tele (GE)" }, { name: "Lumbridge", tele: "Lumbridge Tele" },
+  { name: "Farming Guild", tele: "Skills necklace", unlock: "guild65" },
 ];
-const HARDWOOD_PATCHES = [
-  { name: "Fossil Island (W)", tele: "Digsite pendant / Fossil Is." },
-  { name: "Fossil Island (E)", tele: "Digsite pendant / Fossil Is." },
-];
+const HARDWOOD_PATCHES = [{ name: "Fossil Island (W)", tele: "Digsite pendant" }, { name: "Fossil Island (E)", tele: "Digsite pendant" }];
 const FRUIT_PATCHES = [
-  { name: "Gnome Stronghold", tele: "Spirit tree" },
-  { name: "Tree Gnome Village", tele: "Spirit tree" },
-  { name: "Catherby", tele: "Catherby tablet" },
-  { name: "Brimhaven", tele: "Charter ship / Brimhaven" },
-  { name: "Lletya", tele: "Teleport crystal", unlock: "lletya" },
-  { name: "Farming Guild", tele: "Skills necklace / Farming cape", unlock: "guild85" },
+  { name: "Gnome Stronghold", tele: "Spirit tree" }, { name: "Tree Gnome Village", tele: "Spirit tree" },
+  { name: "Catherby", tele: "Catherby tablet" }, { name: "Brimhaven", tele: "Charter / Brimhaven" },
+  { name: "Lletya", tele: "Teleport crystal" }, { name: "Farming Guild", tele: "Skills necklace", unlock: "guild85" },
 ];
 
-/* ---------- sample prices for offline preview ---------- */
 const SAMPLE_PRICES = {
   "ultracompost": { high: 410, low: 380 }, "grimy ranarr weed": { high: 7100, low: 6950 }, "ranarr seed": { high: 38000, low: 37000 },
   "grimy snapdragon": { high: 3050, low: 2980 }, "snapdragon seed": { high: 53000, low: 52000 }, "grimy toadflax": { high: 4200, low: 4100 }, "toadflax seed": { high: 1600, low: 1500 },
@@ -109,11 +113,11 @@ const SAMPLE_PRICES = {
   "teak sapling": { high: 1100, low: 1000 }, "mahogany sapling": { high: 2400, low: 2200 }, "redwood sapling": { high: 60000, low: 57000 },
   "apple sapling": { high: 600, low: 500 }, "banana sapling": { high: 700, low: 600 }, "orange sapling": { high: 900, low: 800 }, "curry sapling": { high: 1300, low: 1100 }, "pineapple sapling": { high: 2200, low: 2000 }, "papaya sapling": { high: 3500, low: 3200 }, "palm sapling": { high: 14000, low: 13000 }, "dragonfruit sapling": { high: 22000, low: 21000 },
   "tomatoes(5)": { high: 400, low: 350 }, "apples(5)": { high: 500, low: 420 }, "oranges(5)": { high: 700, low: 600 }, "strawberries(5)": { high: 600, low: 520 }, "bananas(5)": { high: 450, low: 400 },
-  "cactus spine": { high: 350, low: 320 }, "coconut": { high: 600, low: 560 }, "sweetcorn": { high: 120, low: 100 }, "watermelon": { high: 220, low: 190 }, "pineapple": { high: 90, low: 70 }, "papaya fruit": { high: 280, low: 250 }, "dragonfruit": { high: 600, low: 540 }, "limpwurt root": { high: 380, low: 350 },
+  "cactus spine": { high: 350, low: 320 }, "coconut": { high: 600, low: 560 }, "sweetcorn": { high: 120, low: 100 }, "watermelon": { high: 220, low: 190 }, "pineapple": { high: 90, low: 70 }, "papaya fruit": { high: 280, low: 250 }, "dragonfruit": { high: 600, low: 540 },
 };
 
-/* ---------- helpers ---------- */
 const fmt = (n) => { if (n == null || isNaN(n)) return "—"; const neg = n < 0, a = Math.abs(n); let s; if (a >= 1e9) s = (a / 1e9).toFixed(2).replace(/\.?0+$/, "") + "b"; else if (a >= 1e6) s = (a / 1e6).toFixed(2).replace(/\.?0+$/, "") + "m"; else if (a >= 1e3) s = (a / 1e3).toFixed(1).replace(/\.0$/, "") + "k"; else s = String(Math.round(a)); return (neg ? "−" : "") + s; };
+const dur = (mins) => { if (mins == null || !isFinite(mins)) return "—"; if (mins < 90) return `${Math.round(mins)} min`; const h = mins / 60; if (h < 48) return `${h.toFixed(h < 10 ? 1 : 0)} hr`; const d = h / 24; if (d < 60) return `${d.toFixed(d < 10 ? 1 : 0)} days`; return `${(d / 30).toFixed(1)} mo`; };
 const geTax = (p) => (p < 50 ? 0 : Math.min(Math.floor(p * 0.02), 5_000_000));
 function priceOf(map, name) { const e = map[String(name).toLowerCase()]; if (!e) return null; if (e.high != null && e.low != null) return (e.high + e.low) / 2; return e.high ?? e.low ?? null; }
 
@@ -135,21 +139,24 @@ function herbRun(crop, patches, level, kit, map) {
   const compP = kit.compost === "none" ? 0 : (priceOf(map, "ultracompost") ?? 0);
   const herbP = priceOf(map, crop.herb);
   let herbs = 0, cost = 0, revenue = 0; const priced = herbP != null;
-  for (const p of patches) {
-    const y = herbYield(crop, level, kit, p);
-    herbs += y; cost += seedP + compP;
-    if (priced) revenue += y * (herbP - geTax(herbP));
-  }
+  for (const p of patches) { const y = herbYield(crop, level, kit, p); herbs += y; cost += seedP + compP; if (priced) revenue += y * (herbP - geTax(herbP)); }
   return { herbs, cost, revenue: priced ? revenue : null, net: priced ? revenue - cost : null, priced, perPatch: patches.length ? herbs / patches.length : 0 };
 }
 function bestGpHerb(patches, level, kit, map) {
   let best = null;
-  for (const h of HERBS.filter((x) => x.farm <= level)) {
-    const r = herbRun(h, patches, level, kit, map);
-    if (r.net == null) continue;
-    if (!best || r.net > best.net) best = { crop: h, ...r };
-  }
+  for (const h of HERBS.filter((x) => x.farm <= level)) { const r = herbRun(h, patches, level, kit, map); if (r.net == null) continue; if (!best || r.net > best.net) best = { crop: h, ...r }; }
   return best;
+}
+/* pick best species of a list for a mode: 'xp' = highest xp, 'value' = lowest gp/xp */
+function pickTree(list, level, map, mode, useCompost) {
+  const opts = list.filter((t) => t.farm <= level).map((t) => {
+    const sap = priceOf(map, t.sapling) ?? 0;
+    const prot = useCompost ? (priceOf(map, "ultracompost") ?? 0) : (t.protect ? (priceOf(map, t.protect.item) ?? 0) * t.protect.qty : 0);
+    const cost = sap + prot;
+    return { ...t, cost, gpxp: cost / t.xp };
+  });
+  if (!opts.length) return null;
+  return mode === "value" ? opts.reduce((a, b) => (b.gpxp < a.gpxp ? b : a)) : opts.reduce((a, b) => (b.xp > a.xp ? b : a));
 }
 
 export default function Harvest({ onHome }) {
@@ -159,11 +166,16 @@ export default function Harvest({ onHome }) {
   const [loading, setLoading] = useState(true);
   const [rsn, setRsn] = useState("");
   const [farming, setFarming] = useState(82);
+  const [farmXp, setFarmXp] = useState(XP_TABLE[82]);
   const [herblore, setHerblore] = useState(79);
   const [womNote, setWomNote] = useState("");
   const [mode, setMode] = useState("gp");
   const [supplyTarget, setSupplyTarget] = useState("prayer");
-  const [runsPerDay, setRunsPerDay] = useState(4);
+  const [herbRuns, setHerbRuns] = useState(4);
+  const [treeRuns, setTreeRuns] = useState(2);
+  const [goalFarm, setGoalFarm] = useState(99);
+  const [treeMode, setTreeMode] = useState("xp");
+  const [fruitMode, setFruitMode] = useState("xp");
   const [compost, setCompost] = useState("ultra");
   const [secateurs, setSecateurs] = useState(true);
   const [cape, setCape] = useState(false);
@@ -172,6 +184,7 @@ export default function Harvest({ onHome }) {
   const [kourendHard, setKourendHard] = useState(false);
   const [unlocks, setUnlocks] = useState({ favour: true, guild65: true, weiss: false, trollheim: false, harmony: false, varlamore: false });
   const [showKit, setShowKit] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const kit = { compost, secateurs, cape, attas, kandarin, kourendHard };
 
@@ -180,21 +193,59 @@ export default function Harvest({ onHome }) {
     try { const r = await fetch(`${DATA_URL}?t=${Math.floor(Date.now() / 60000)}`, { cache: "no-store" }); if (r.ok) { const d = await r.json(); setPriceMap(d); setSample(false); } } catch (e) {}
     setLoading(false);
   };
-  useEffect(() => { loadPrices(); }, []);
 
-  const loadWom = async () => {
-    if (!rsn.trim()) return;
+  const loadWom = async (name) => {
+    const q = (name ?? rsn).trim();
+    if (!q) return;
     setWomNote("Loading…");
     try {
-      const r = await fetch(`https://api.wiseoldman.net/v2/players/${encodeURIComponent(rsn.trim())}`);
+      const r = await fetch(`https://api.wiseoldman.net/v2/players/${encodeURIComponent(q)}`);
       if (!r.ok) throw new Error();
       const d = await r.json();
       const sk = d?.latestSnapshot?.data?.skills || {};
-      if (sk.farming?.level) setFarming(sk.farming.level);
+      if (sk.farming?.level) { setFarming(sk.farming.level); setFarmXp(sk.farming.experience ?? XP_TABLE[sk.farming.level]); }
       if (sk.herblore?.level) setHerblore(sk.herblore.level);
       setWomNote(`Loaded ${d.displayName}`);
     } catch (e) { setWomNote("Couldn't find that name — set levels manually below."); }
   };
+
+  // hydrate from localStorage + auto-load last RSN
+  useEffect(() => {
+    loadPrices();
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s.rsn) setRsn(s.rsn);
+        if (s.farming) { setFarming(s.farming); setFarmXp(s.farmXp ?? XP_TABLE[s.farming]); }
+        if (s.herblore) setHerblore(s.herblore);
+        if (s.compost) setCompost(s.compost);
+        if (typeof s.secateurs === "boolean") setSecateurs(s.secateurs);
+        if (typeof s.cape === "boolean") setCape(s.cape);
+        if (typeof s.attas === "boolean") setAttas(s.attas);
+        if (typeof s.kandarin === "number") setKandarin(s.kandarin);
+        if (typeof s.kourendHard === "boolean") setKourendHard(s.kourendHard);
+        if (s.unlocks) setUnlocks(s.unlocks);
+        if (s.mode) setMode(s.mode);
+        if (s.supplyTarget) setSupplyTarget(s.supplyTarget);
+        if (s.herbRuns) setHerbRuns(s.herbRuns);
+        if (s.treeRuns) setTreeRuns(s.treeRuns);
+        if (s.goalFarm) setGoalFarm(s.goalFarm);
+        if (s.treeMode) setTreeMode(s.treeMode);
+        if (s.fruitMode) setFruitMode(s.fruitMode);
+        if (s.rsn) loadWom(s.rsn);
+      }
+    } catch (e) {}
+    setHydrated(true);
+  }, []);
+
+  // persist
+  useEffect(() => {
+    if (!hydrated) return;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ rsn, farming, farmXp, herblore, compost, secateurs, cape, attas, kandarin, kourendHard, unlocks, mode, supplyTarget, herbRuns, treeRuns, goalFarm, treeMode, fruitMode })); } catch (e) {}
+  }, [hydrated, rsn, farming, farmXp, herblore, compost, secateurs, cape, attas, kandarin, kourendHard, unlocks, mode, supplyTarget, herbRuns, treeRuns, goalFarm, treeMode, fruitMode]);
+
+  const setFarmLevel = (v) => { const lvl = Math.max(1, Math.min(99, +v || 1)); setFarming(lvl); setFarmXp(XP_TABLE[lvl]); };
 
   const openHerbPatches = useMemo(() => HERB_PATCHES.filter((p) => {
     if (p.unlock === "open") return true;
@@ -204,15 +255,20 @@ export default function Harvest({ onHome }) {
     return true;
   }), [unlocks, farming]);
 
+  const herbTime = useMemo(() => Math.round(openHerbPatches.length * 1.5 + 2), [openHerbPatches]);
+
+  const supplyTargets = useMemo(() => POTIONS.filter((p) => { const h = HERBS.find((x) => x.key === p.herb); return h && h.farm <= farming; }), [farming]);
+  useEffect(() => { if (mode === "supply" && !supplyTargets.find((p) => p.key === supplyTarget)) setSupplyTarget(supplyTargets[0]?.key || "prayer"); }, [supplyTargets, mode, supplyTarget]);
+
   const herbPick = useMemo(() => {
     if (mode === "gp") return bestGpHerb(openHerbPatches, farming, kit, priceMap);
-    const target = HERBS.find((h) => h.potion.key === supplyTarget);
+    const pot = POTIONS.find((p) => p.key === supplyTarget) || POTIONS[0];
+    const target = HERBS.find((h) => h.key === pot.herb);
     if (!target) return null;
     const r = herbRun(target, openHerbPatches, farming, kit, priceMap);
-    return { crop: target, ...r, brewLocked: target.potion.herb > herblore };
+    return { crop: target, pot, ...r, brewLocked: pot.hReq > herblore };
   }, [mode, supplyTarget, openHerbPatches, farming, herblore, kit, priceMap]);
 
-  // next-focus: gp angle (next unlock & whether it beats current) + xp angle (highest plantable)
   const nextFocus = useMemo(() => {
     const next = HERBS.find((h) => h.farm > farming);
     const highest = [...HERBS].reverse().find((h) => h.farm <= farming);
@@ -230,10 +286,8 @@ export default function Harvest({ onHome }) {
 
   const rates = useMemo(() => {
     if (!herbPick || herbPick.net == null) return null;
-    const patches = openHerbPatches.length;
-    const activeMin = Math.round(patches * 2.5 + 5);
-    return { activeMin, activeGpHr: herbPick.net / (activeMin / 60), gpDay: herbPick.net * runsPerDay };
-  }, [herbPick, openHerbPatches, runsPerDay]);
+    return { activeGpHr: herbPick.net / (herbTime / 60), gpDay: herbPick.net * herbRuns };
+  }, [herbPick, herbTime, herbRuns]);
 
   const shopping = useMemo(() => {
     if (!herbPick) return [];
@@ -244,33 +298,50 @@ export default function Harvest({ onHome }) {
   }, [herbPick, openHerbPatches, compost, priceMap]);
   const shopTotal = shopping.reduce((s, i) => s + (i.total || 0), 0);
 
-  // tree run: best regular (6) + best hardwood (2) + redwood (1, lvl90)
   const treeRun = useMemo(() => {
-    const reg = [...TREES].reverse().find((t) => t.farm <= farming);
-    const hard = [...HARDWOODS].reverse().find((t) => t.farm <= farming);
-    const red = farming >= REDWOOD.farm ? REDWOOD : null;
-    const cost = (t, n, withProt) => { const sap = priceOf(priceMap, t.sapling) ?? 0; const prot = withProt && t.protect ? (priceOf(priceMap, t.protect.item) ?? 0) * t.protect.qty : 0; const comp = withProt ? 0 : (priceOf(priceMap, "ultracompost") ?? 0); return (sap + prot + comp) * n; };
-    let xp = 0, gp = 0; const lines = [];
-    if (reg) { xp += reg.xp * 6; const c = cost(reg, 6, true); gp += c; lines.push({ name: reg.name, n: 6, xp: reg.xp * 6, cost: c, prot: reg.protect }); }
-    if (hard) { xp += hard.xp * 2; const c = cost(hard, 2, false); gp += c; lines.push({ name: hard.name, n: 2, xp: hard.xp * 2, cost: c, comp: true }); }
-    if (red) { xp += red.xp; const c = cost(red, 1, true); gp += c; lines.push({ name: red.name, n: 1, xp: red.xp, cost: c, prot: red.protect }); }
-    return { reg, hard, red, xp, gp, lines };
-  }, [farming, priceMap]);
+    const reg = pickTree(TREES, farming, priceMap, treeMode, false);
+    const hard = pickTree(HARDWOODS, farming, priceMap, treeMode, true);
+    const red = farming >= REDWOOD.farm ? { ...REDWOOD, cost: (priceOf(priceMap, REDWOOD.sapling) ?? 0) + (priceOf(priceMap, "dragonfruit") ?? 0) * 6 } : null;
+    let xp = 0, gp = 0; const lines = []; let stops = 0;
+    if (reg) { xp += reg.xp * 6; gp += reg.cost * 6; stops += 6; lines.push({ name: reg.name, n: 6, xp: reg.xp * 6, cost: reg.cost * 6, note: reg.protect ? `${reg.protect.qty}× ${reg.protect.item}` : "" }); }
+    if (hard) { xp += hard.xp * 2; gp += hard.cost * 2; stops += 2; lines.push({ name: hard.name, n: 2, xp: hard.xp * 2, cost: hard.cost * 2, note: "ultracompost" }); }
+    if (red) { xp += red.xp; gp += red.cost; stops += 1; lines.push({ name: red.name, n: 1, xp: red.xp, cost: red.cost, note: "6× Dragonfruit" }); }
+    return { reg, hard, red, xp, gp, lines, stops, timeMin: stops ? Math.round(stops * 0.7 + 2) : 0 };
+  }, [farming, priceMap, treeMode]);
 
   const fruitRun = useMemo(() => {
-    const best = [...FRUIT].reverse().find((t) => t.farm <= farming);
+    const best = pickTree(FRUIT, farming, priceMap, fruitMode, false);
     if (!best) return null;
-    const sap = priceOf(priceMap, best.sapling) ?? 0;
-    const prot = best.protect ? (priceOf(priceMap, best.protect.item) ?? 0) * best.protect.qty : 0;
-    return { ...best, n: 6, xp: best.xp * 6, cost: (sap + prot) * 6 };
-  }, [farming, priceMap]);
+    return { ...best, n: 6, xp: best.xp * 6, gp: best.cost * 6, stops: 6, timeMin: 6 };
+  }, [farming, priceMap, fruitMode]);
 
-  const supplyTargets = HERBS.filter((h) => h.farm <= farming).map((h) => h.potion);
+  const activeRun = tab === "fruit" ? fruitRun : treeRun;
+  const ttl = useMemo(() => {
+    if (!activeRun || !activeRun.xp) return null;
+    const goalXp = XP_TABLE[Math.min(99, Math.max(2, goalFarm))] ?? 0;
+    const need = Math.max(0, goalXp - farmXp);
+    if (need <= 0) return { reached: true };
+    const perDay = activeRun.xp * treeRuns;
+    const totalRuns = need / activeRun.xp;
+    return { need, days: need / perDay, activeHrs: (totalRuns * activeRun.timeMin) / 60, perDay };
+  }, [activeRun, goalFarm, farmXp, treeRuns]);
 
   const Route = ({ patches }) => (
     <div className="card">
-      <div className="card-h"><Navigation size={14} /> Route &amp; teleports — {patches.length} stops</div>
+      <div className="card-h"><Navigation size={13} /> Route &amp; teleports · {patches.length} stops</div>
       {patches.map((p, i) => <div key={p.name + i} className="route"><span className="rt-num">{i + 1}</span><span className="rt-name">{p.name}</span><span className="rt-tele">{p.tele}</span></div>)}
+    </div>
+  );
+  const TimeToLevel = () => ttl && (
+    <div className="ttl">
+      <div className="ttl-h"><Target size={13} /> Time to level</div>
+      <div className="ttl-row">
+        <label>Goal lvl</label>
+        <input type="number" min="2" max="99" value={goalFarm} onChange={(e) => setGoalFarm(Math.max(2, Math.min(99, +e.target.value || 2)))} />
+        <div className="ttl-runs"><span>Runs/day <b>{treeRuns}</b></span><input type="range" min="1" max="4" value={treeRuns} onChange={(e) => setTreeRuns(+e.target.value)} /></div>
+      </div>
+      {ttl.reached ? <div className="ttl-out">You're already at Farming {goalFarm}+ 🎉</div> :
+        <div className="ttl-out"><b className="big">{dur(ttl.days * 24 * 60)}</b><span>to Farming {goalFarm} at {treeRuns}/day · {fmt(ttl.need)} xp to go · ~{ttl.activeHrs.toFixed(1)} hr active total</span></div>}
     </div>
   );
 
@@ -278,29 +349,29 @@ export default function Harvest({ onHome }) {
     <div className="hv">
       <style>{CSS}</style>
       <header className="hd">
-        <div className="hd-l">{onHome && <button className="back" onClick={onHome} title="All tools"><ArrowLeft size={18} /></button>}<Sprout size={20} /><h1>Harvest</h1></div>
+        <div className="hd-l">{onHome && <button className="back" onClick={onHome} title="All tools"><ArrowLeft size={17} /></button>}<Sprout size={18} /><h1>Harvest</h1></div>
         <div className="hd-r">
-          <span className={"feed " + (sample ? "warn" : "live")}>{sample ? "Sample prices" : "Live prices"}</span>
-          <button className="ic" onClick={loadPrices}><RefreshCw size={15} className={loading ? "spin" : ""} /></button>
+          <span className={"feed " + (sample ? "warn" : "live")}>{sample ? "Sample" : "Live"}</span>
+          <button className="ic" onClick={loadPrices}><RefreshCw size={14} className={loading ? "spin" : ""} /></button>
         </div>
       </header>
 
       <div className="lvls">
         <div className="lvl-in">
-          <input value={rsn} onChange={(e) => setRsn(e.target.value)} placeholder="RuneScape name (optional)" onKeyDown={(e) => e.key === "Enter" && loadWom()} />
-          <button className="lvl-go" onClick={loadWom}>Load</button>
+          <input value={rsn} onChange={(e) => setRsn(e.target.value)} placeholder="RuneScape name" onKeyDown={(e) => e.key === "Enter" && loadWom()} />
+          <button className="lvl-go" onClick={() => loadWom()}>Load</button>
         </div>
         <div className="lvl-pair">
-          <label className="lvl"><span>Farming</span><input type="number" min="1" max="99" value={farming} onChange={(e) => setFarming(Math.max(1, Math.min(99, +e.target.value || 1)))} /></label>
+          <label className="lvl"><span>Farming</span><input type="number" min="1" max="99" value={farming} onChange={(e) => setFarmLevel(e.target.value)} /></label>
           <label className="lvl"><span>Herblore</span><input type="number" min="1" max="99" value={herblore} onChange={(e) => setHerblore(Math.max(1, Math.min(99, +e.target.value || 1)))} /></label>
         </div>
       </div>
       {womNote && <div className="wom">{womNote}</div>}
 
       <div className="tabs">
-        <button className={tab === "herb" ? "on" : ""} onClick={() => setTab("herb")}><Leaf size={14} /> Herb run</button>
-        <button className={tab === "tree" ? "on" : ""} onClick={() => setTab("tree")}><TreePine size={14} /> Tree run</button>
-        <button className={tab === "fruit" ? "on" : ""} onClick={() => setTab("fruit")}><Sprout size={14} /> Fruit run</button>
+        <button className={tab === "herb" ? "on" : ""} onClick={() => setTab("herb")}><Leaf size={14} /> Herb</button>
+        <button className={tab === "tree" ? "on" : ""} onClick={() => setTab("tree")}><TreePine size={14} /> Tree</button>
+        <button className={tab === "fruit" ? "on" : ""} onClick={() => setTab("fruit")}><Sprout size={14} /> Fruit</button>
       </div>
 
       {tab === "herb" && (
@@ -338,155 +409,142 @@ export default function Harvest({ onHome }) {
           {herbPick && (
             <>
               <div className="hero">
-                <div className="hero-top">
-                  <div className="hero-herb">
-                    <span className="hero-lbl">{mode === "gp" ? "Best herb to plant" : "Growing for " + (HERBS.find(h => h.potion.key === supplyTarget)?.potion.name)}</span>
-                    <span className="hero-name">{herbPick.crop.name}</span>
-                    <span className="hero-sub">{openHerbPatches.length} open patch{openHerbPatches.length !== 1 ? "es" : ""} · ~{herbPick.perPatch.toFixed(1)} herbs each</span>
-                  </div>
+                <span className="hero-lbl">{mode === "gp" ? "Plant this" : "Growing for " + herbPick.pot.name}</span>
+                <div className="hero-main">
+                  <span className="hero-name">{herbPick.crop.name}</span>
                   <div className="hero-fig">{herbPick.net != null ? <><span className="hero-net">{fmt(herbPick.net)}</span><span className="hero-figl">net / run</span></> : <span className="hero-figl">price n/a</span>}</div>
                 </div>
-                {herbPick.brewLocked && <div className="warn-line"><AlertTriangle size={12} /> You can grow it, but {herbPick.crop.potion.name} needs Herblore {herbPick.crop.potion.herb}.</div>}
+                <div className="hero-meta"><span><Navigation size={11} /> {openHerbPatches.length} patches</span><span><Clock size={11} /> ~{herbTime} min/run</span><span><Leaf size={11} /> ~{herbPick.perPatch.toFixed(1)} each</span></div>
+                {herbPick.brewLocked && <div className="warn-line"><AlertTriangle size={12} /> You can grow it, but {herbPick.pot.name} needs Herblore {herbPick.pot.hReq}.</div>}
                 <div className="rate-grid">
-                  <div className="rate"><span>≈ herbs / run</span><b>{Math.round(herbPick.herbs)}</b></div>
-                  <div className="rate"><span>seed + compost</span><b>{fmt(herbPick.cost)}</b></div>
-                  {rates && <div className="rate hl"><span>active gp/hr <em title="Value of the minutes you actively spend — NOT sustainable, crops take ~80 min to regrow.">ⓘ</em></span><b>{fmt(rates.activeGpHr)}</b></div>}
-                  {rates && <div className="rate"><span>realistic gp/day</span><b>{fmt(rates.gpDay)}</b></div>}
+                  <div className="rate hl"><span>realistic gp/day</span><b>{fmt(rates ? rates.gpDay : null)}</b></div>
+                  <div className="rate"><span>active gp/hr <em title="Value of the minutes you actively spend — not sustainable; crops take ~80 min to regrow.">ⓘ</em></span><b>{fmt(rates ? rates.activeGpHr : null)}</b></div>
+                  <div className="rate sm"><span>≈ herbs/run</span><b>{Math.round(herbPick.herbs)}</b></div>
+                  <div className="rate sm"><span>seed + compost</span><b className="cost">−{fmt(herbPick.cost)}</b></div>
                 </div>
-                {rates && <div className="rate-note">Active gp/hr is the value of the ~{rates.activeMin} active min — you can't chain runs, so the honest figure is <b>{fmt(rates.gpDay)}/day</b> at {runsPerDay} runs/day.</div>}
-                <div className="rpd"><span>Runs / day: <b>{runsPerDay}</b></span><input type="range" min="1" max="12" value={runsPerDay} onChange={(e) => setRunsPerDay(+e.target.value)} /></div>
+                <div className="rpd"><span>Runs / day <b>{herbRuns}</b></span><input type="range" min="1" max="12" value={herbRuns} onChange={(e) => setHerbRuns(+e.target.value)} /></div>
               </div>
 
               <div className="nextf">
                 <div className="nextf-h"><ArrowUpRight size={13} /> Next focus</div>
-                {nextFocus.gpLine && <div className="nextf-row"><b>GP:</b> {nextFocus.gpLine}</div>}
-                {!nextFocus.next && <div className="nextf-row"><b>GP:</b> You've unlocked every herb — plant the best-value one above.</div>}
-                <div className="nextf-row"><b>XP:</b> For Farming/Herblore XP, plant the highest tier you can — {nextFocus.highest ? nextFocus.highest.name : "—"} is your top unlock right now{nextFocus.next ? `; ${nextFocus.next.name} opens at Farming ${nextFocus.next.farm}` : ""}.</div>
+                {nextFocus.gpLine && <div className="nextf-row"><b>GP</b> {nextFocus.gpLine}</div>}
+                {!nextFocus.next && <div className="nextf-row"><b>GP</b> Every herb unlocked — plant the best-value one above.</div>}
+                <div className="nextf-row"><b>XP</b> Highest tier = most Farming/Herblore xp: {nextFocus.highest ? nextFocus.highest.name : "—"} now{nextFocus.next ? `; ${nextFocus.next.name} at Farming ${nextFocus.next.farm}` : ""}.</div>
               </div>
 
-              {mode === "supply" && herbPick.priced && <div className="supply-out"><Leaf size={13} /> One run ≈ <b>{Math.round(herbPick.herbs)}</b> {herbPick.crop.name.toLowerCase()} → ~<b>{Math.round(herbPick.herbs)}</b> {herbPick.crop.potion.name.toLowerCase()}s (≈1 herb per potion).</div>}
+              {mode === "supply" && herbPick.priced && <div className="supply-out"><Leaf size={13} /> One run ≈ <b>{Math.round(herbPick.herbs)}</b> {herbPick.crop.name.toLowerCase()} → ~<b>{Math.round(herbPick.herbs)}</b> {herbPick.pot.name.toLowerCase()}{herbPick.pot.note ? ` (${herbPick.pot.note})` : ""}.</div>}
 
               <div className="card">
-                <div className="card-h"><Coins size={14} /> Shopping list — {openHerbPatches.length} patches</div>
+                <div className="card-h"><Coins size={13} /> Buy for one run</div>
                 {shopping.map((i) => <div key={i.name} className="shop"><span className="shop-n">{i.name}</span><span className="shop-q">×{i.qty}</span><span className="shop-t">{i.total != null ? fmt(i.total) : "—"}</span></div>)}
-                <div className="shop total"><span className="shop-n">Total to buy</span><span /><span className="shop-t">{fmt(shopTotal)}</span></div>
+                <div className="shop total"><span className="shop-n">Total</span><span /><span className="shop-t">{fmt(shopTotal)}</span></div>
               </div>
 
               <Route patches={openHerbPatches} />
 
               <div className="card">
-                <div className="card-h"><Leaf size={14} /> Per-patch yield</div>
-                {openHerbPatches.map((p) => { const y = herbYield(herbPick.crop, farming, kit, p); return <div key={p.id} className="route"><span className="rt-name">{p.name}{p.diseaseFree && <span className="df">disease-free</span>}</span><span className="rt-tele yld">{y.toFixed(1)} herbs</span></div>; })}
+                <div className="card-h"><Leaf size={13} /> Per-patch yield</div>
+                {openHerbPatches.map((p) => { const y = herbYield(herbPick.crop, farming, kit, p); return <div key={p.id} className="route"><span className="rt-name">{p.name}{p.diseaseFree && <span className="df">disease-free</span>}</span><span className="rt-tele yld">{y.toFixed(1)}</span></div>; })}
               </div>
             </>
           )}
         </>
       )}
 
-      {tab === "tree" && (
-        <>
-          <div className="tree-note"><Info size={13} /> Tree runs are an <b>XP</b> activity — they cost gp and pay Farming experience toward max, not profit. Hardwoods run on ultracompost (protection skipped).</div>
-          {treeRun.xp === 0 && <div className="empty">No trees available at Farming {farming}.</div>}
-          {treeRun.xp > 0 && (
-            <>
-              <div className="hero">
-                <div className="hero-top">
-                  <div className="hero-herb">
-                    <span className="hero-lbl">Best tree run for your level</span>
-                    <span className="hero-name">{[treeRun.reg, treeRun.hard, treeRun.red].filter(Boolean).map(t => t.name).join(" · ")}</span>
-                    <span className="hero-sub">6 tree + 2 hardwood{treeRun.red ? " + 1 redwood" : ""} patches</span>
+      {(tab === "tree" || tab === "fruit") && (() => {
+        const run = tab === "fruit" ? fruitRun : treeRun;
+        const m = tab === "fruit" ? fruitMode : treeMode;
+        const setM = tab === "fruit" ? setFruitMode : setTreeMode;
+        const empty = tab === "fruit" ? !fruitRun : treeRun.xp === 0;
+        const title = tab === "fruit" ? (fruitRun ? fruitRun.name : "") : [treeRun.reg, treeRun.hard, treeRun.red].filter(Boolean).map((t) => t.name).join(" · ");
+        return (
+          <>
+            <div className="tree-note"><Info size={13} /> {tab === "fruit" ? "Fruit runs are an XP activity — they cost gp and pay Farming xp (~16 h grow, so ~1/day)." : "Tree runs are an XP activity — gp in, Farming xp out. Hardwoods run on ultracompost, no protection."}</div>
+            <div className="modes two">
+              <button className={m === "xp" ? "on" : ""} onClick={() => setM("xp")}>Most XP</button>
+              <button className={m === "value" ? "on" : ""} onClick={() => setM("value")}>Best XP / gp</button>
+            </div>
+
+            {empty && <div className="empty">No {tab === "fruit" ? "fruit tree" : "tree"} available at Farming {farming}.</div>}
+            {!empty && (
+              <>
+                <div className="hero">
+                  <span className="hero-lbl">{m === "value" ? "Most cost-effective xp" : "Most xp for your level"}</span>
+                  <div className="hero-main">
+                    <span className="hero-name sm">{title}</span>
+                    <div className="hero-fig"><span className="hero-net xp">{fmt(run.xp)}</span><span className="hero-figl">xp / run</span></div>
                   </div>
-                  <div className="hero-fig"><span className="hero-net xp">{fmt(treeRun.xp)}</span><span className="hero-figl">XP / run</span></div>
+                  <div className="hero-meta"><span><Navigation size={11} /> {run.stops} stops</span><span><Clock size={11} /> ~{run.timeMin} min/run</span><span><Coins size={11} /> <em className="cost">−{fmt(run.gp)}</em></span></div>
+                  <div className="rate-grid">
+                    <div className="rate hl"><span>gp / xp</span><b className="cost">−{(run.gp / run.xp).toFixed(2)}</b></div>
+                    <div className="rate"><span>xp / run</span><b className="xpv">{fmt(run.xp)}</b></div>
+                  </div>
                 </div>
-                <div className="rate-grid">
-                  <div className="rate"><span>gp cost / run</span><b className="cost">−{fmt(treeRun.gp)}</b></div>
-                  <div className="rate"><span>gp / xp</span><b className="cost">−{(treeRun.gp / treeRun.xp).toFixed(2)}</b></div>
+
+                <TimeToLevel />
+
+                <div className="card">
+                  <div className="card-h"><TreePine size={13} /> What to plant</div>
+                  {(tab === "fruit" ? [{ name: run.name, n: 6, xp: run.xp, cost: run.gp, note: `${run.protect.qty}× ${run.protect.item}` }] : treeRun.lines).map((l) => (
+                    <div key={l.name} className="route"><span className="rt-name">{l.name} <span className="req">×{l.n}</span></span><span className="rt-tele"><b className="xpv">{fmt(l.xp)}</b> · <span className="cost">−{fmt(l.cost)}</span> · {l.note}</span></div>
+                  ))}
                 </div>
-                <div className="rate-note">Trees grow for hours, so this is ~1–2 runs/day. Cost is saplings + protection (hardwoods use ultracompost instead).</div>
-              </div>
 
-              <div className="card">
-                <div className="card-h"><TreePine size={14} /> What to plant</div>
-                {treeRun.lines.map((l) => <div key={l.name} className="route"><span className="rt-name">{l.name} <span className="req">×{l.n}</span></span><span className="rt-tele"><b className="xpv">{fmt(l.xp)} xp</b> · <span className="cost">−{fmt(l.cost)}</span></span></div>)}
-                <div className="bring">Protection: {treeRun.reg ? `${treeRun.reg.name} → ${treeRun.reg.protect.qty}× ${treeRun.reg.protect.item}` : ""}{treeRun.red ? `; Redwood → 6× Dragonfruit` : ""}. Hardwoods: ultracompost, no payment.</div>
-              </div>
+                <Route patches={tab === "fruit"
+                  ? FRUIT_PATCHES.filter((p) => !p.unlock || (p.unlock === "guild85" ? farming >= 85 : true))
+                  : [...TREE_PATCHES.filter((p) => !p.unlock || (p.unlock === "guild65" ? (unlocks.guild65 && farming >= 65) : true)), ...HARDWOOD_PATCHES, ...(treeRun.red ? [{ name: "Farming Guild (redwood)", tele: "Skills necklace / Farm cape" }] : [])]} />
 
-              <Route patches={[...TREE_PATCHES.filter(p => !p.unlock || (p.unlock === "guild65" ? (unlocks.guild65 && farming >= 65) : true)), ...HARDWOOD_PATCHES, ...(treeRun.red ? [{ name: "Farming Guild (redwood)", tele: "Skills necklace / Farming cape" }] : [])]} />
-
-              <div className="card">
-                <div className="card-h"><TreePine size={14} /> Tree ladder</div>
-                {[...TREES, ...HARDWOODS, REDWOOD].sort((a, b) => a.farm - b.farm).map((t) => <div key={t.key} className={"route" + (t.farm > farming ? " lock" : "")}><span className="rt-name">{t.name} <span className="req">Lv {t.farm}</span></span><span className="rt-tele yld">{fmt(t.xp)} xp</span></div>)}
-              </div>
-            </>
-          )}
-        </>
-      )}
-
-      {tab === "fruit" && (
-        <>
-          <div className="tree-note"><Info size={13} /> Fruit runs are an <b>XP</b> activity — they cost gp and pay Farming experience, not profit. Fruit trees grow ~16h, so ~1 run/day.</div>
-          {!fruitRun && <div className="empty">No fruit tree available at Farming {farming}.</div>}
-          {fruitRun && (
-            <>
-              <div className="hero">
-                <div className="hero-top">
-                  <div className="hero-herb"><span className="hero-lbl">Best fruit tree for your level</span><span className="hero-name">{fruitRun.name}</span><span className="hero-sub">{fruitRun.n} patches</span></div>
-                  <div className="hero-fig"><span className="hero-net xp">{fmt(fruitRun.xp)}</span><span className="hero-figl">XP / run</span></div>
+                <div className="card">
+                  <div className="card-h"><TreePine size={13} /> {tab === "fruit" ? "Fruit" : "Tree"} ladder</div>
+                  {(tab === "fruit" ? FRUIT : [...TREES, ...HARDWOODS, REDWOOD].sort((a, b) => a.farm - b.farm)).map((t) => (
+                    <div key={t.key} className={"route" + (t.farm > farming ? " lock" : "")}><span className="rt-name">{t.name} <span className="req">Lv {t.farm}</span></span><span className="rt-tele yld">{fmt(t.xp)} xp</span></div>
+                  ))}
                 </div>
-                <div className="rate-grid">
-                  <div className="rate"><span>XP each</span><b>{fmt(fruitRun.xp / fruitRun.n)}</b></div>
-                  <div className="rate"><span>gp cost / run</span><b className="cost">−{fmt(fruitRun.cost)}</b></div>
-                </div>
-                <div className="rate-note">Cost is saplings + protection ({fruitRun.protect.qty}× {fruitRun.protect.item}) at live prices.</div>
-              </div>
-              <Route patches={FRUIT_PATCHES.filter(p => !p.unlock || (p.unlock === "guild85" ? farming >= 85 : true))} />
-              <div className="card">
-                <div className="card-h"><Sprout size={14} /> Fruit tree ladder</div>
-                {FRUIT.map((t) => <div key={t.key} className={"route" + (t.farm > farming ? " lock" : "")}><span className="rt-name">{t.name} <span className="req">Lv {t.farm}</span></span><span className="rt-tele yld">{fmt(t.xp)} xp</span></div>)}
-              </div>
-            </>
-          )}
-        </>
-      )}
+              </>
+            )}
+          </>
+        );
+      })()}
 
-      <div className="foot"><AlertTriangle size={11} /> Per-herb chance-to-save and tree XP are wiki-pinned; prices are GE mid. Teleport routes are a sensible default, not strictly optimal.</div>
+      <div className="foot"><AlertTriangle size={11} /> Per-herb chance-to-save &amp; tree xp are wiki-pinned; prices are GE mid. Run times &amp; routes are sensible estimates, not strictly optimal.</div>
     </div>
   );
 }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
 .hv{--bg:#0a0d0b;--p1:#11160f;--p2:#161d14;--p3:#1c2519;--ln:rgba(255,255,255,.07);--ln2:rgba(255,255,255,.13);--tx:#eaf0e8;--mu:#94a394;--fa:#6a7869;--grn:#5fd07f;--grn2:#86e6a0;--gold:#f5c542;--cost:#f0844e;
-  font-family:'Sora',system-ui,sans-serif;color:var(--tx);background:var(--bg);min-height:100dvh;padding:0 14px 46px;max-width:720px;margin:0 auto}
+  font-family:'Sora',system-ui,sans-serif;color:var(--tx);background:var(--bg);min-height:100dvh;padding:0 13px 46px;max-width:720px;margin:0 auto}
 .hv *{box-sizing:border-box}
 .spin{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 .flip{transform:rotate(180deg)}
-.hd{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:16px 2px 13px;background:linear-gradient(180deg,var(--bg) 80%,transparent);backdrop-filter:blur(6px)}
-.hd-l{display:flex;align-items:center;gap:9px}.hd-l>svg{color:var(--grn)}
-.hd-l h1{font-family:'Cinzel',serif;font-weight:700;font-size:23px;margin:0;color:var(--tx)}
-.hd-r{display:flex;align-items:center;gap:9px}
-.feed{font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;border:1px solid var(--ln)}
+.hd{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 2px 11px;background:linear-gradient(180deg,var(--bg) 82%,transparent);backdrop-filter:blur(6px)}
+.hd-l{display:flex;align-items:center;gap:8px;min-width:0}.hd-l>svg{color:var(--grn);flex-shrink:0}
+.hd-l h1{font-family:'Cinzel',serif;font-weight:700;font-size:21px;margin:0;color:var(--tx);white-space:nowrap}
+.hd-r{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.feed{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:20px;border:1px solid var(--ln);white-space:nowrap}
 .feed.live{color:var(--grn);border-color:rgba(95,208,127,.3);background:rgba(95,208,127,.08)}
 .feed.warn{color:var(--gold);border-color:rgba(245,197,66,.3);background:rgba(245,197,66,.08)}
-.ic,.back{border-radius:9px;border:1px solid var(--ln);background:var(--p1);color:var(--mu);display:grid;place-items:center;cursor:pointer}
-.ic{width:32px;height:32px}.back{width:34px;height:34px;margin-right:4px}.back:hover,.ic:hover{color:var(--grn2);border-color:var(--grn)}
-.lvls{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap}
-.lvl-in{flex:1;min-width:180px;display:flex;gap:6px}
-.lvl-in input{flex:1;padding:9px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--p1);color:var(--tx);font-size:14px;outline:none}
+.ic,.back{border-radius:9px;border:1px solid var(--ln);background:var(--p1);color:var(--mu);display:grid;place-items:center;cursor:pointer;flex-shrink:0}
+.ic{width:31px;height:31px}.back{width:33px;height:33px}.back:hover,.ic:hover{color:var(--grn2);border-color:var(--grn)}
+/* levels: RSN full row, then two equal boxes side-by-side */
+.lvls{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.lvl-in{display:flex;gap:6px}
+.lvl-in input{flex:1;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--p1);color:var(--tx);font-size:14px;outline:none}
 .lvl-in input:focus{border-color:var(--grn)}.lvl-in input::placeholder{color:var(--fa)}
-.lvl-go{padding:0 16px;border-radius:10px;border:1px solid var(--ln);background:var(--p2);color:var(--tx);font-family:'Sora';font-weight:600;font-size:13px;cursor:pointer}
+.lvl-go{flex-shrink:0;padding:0 18px;border-radius:10px;border:1px solid var(--ln);background:var(--p2);color:var(--tx);font-family:'Sora';font-weight:600;font-size:13px;cursor:pointer}
 .lvl-go:hover{border-color:var(--grn)}
 .lvl-pair{display:flex;gap:8px}
-.lvl{display:flex;flex-direction:column;gap:3px}
-.lvl span{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);font-weight:600;padding-left:2px}
-.lvl input{width:64px;padding:8px 10px;border-radius:9px;border:1px solid var(--ln);background:var(--p1);color:var(--tx);font-family:'JetBrains Mono',monospace;font-size:15px;text-align:center;outline:none}
+.lvl{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.lvl span{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);font-weight:700;padding-left:2px}
+.lvl input{width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--ln);background:var(--p1);color:var(--tx);font-family:'JetBrains Mono',monospace;font-size:15px;text-align:center;outline:none}
 .lvl input:focus{border-color:var(--grn)}
 .wom{font-size:12px;color:var(--mu);margin-bottom:8px;padding-left:2px}
 .tabs{display:flex;gap:7px;margin:10px 0 12px}
 .tabs button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--ln);background:var(--p1);color:var(--mu);font-family:'Sora';font-size:13px;font-weight:600;cursor:pointer;transition:.14s}
 .tabs button.on{color:var(--grn2);border-color:var(--grn);background:rgba(95,208,127,.08)}
-.modes{display:flex;gap:8px;margin-bottom:11px}
-.modes button{flex:1;padding:11px;border-radius:11px;border:1px solid var(--ln);background:var(--p1);color:var(--mu);font-family:'Sora';font-size:14px;font-weight:600;cursor:pointer;transition:.14s}
+.modes{display:flex;gap:8px;margin-bottom:11px}.modes.two{margin-bottom:12px}
+.modes button{flex:1;padding:11px;border-radius:11px;border:1px solid var(--ln);background:var(--p1);color:var(--mu);font-family:'Sora';font-size:13.5px;font-weight:600;cursor:pointer;transition:.14s}
 .modes button.on{background:linear-gradient(180deg,var(--grn2),var(--grn));color:#0a1f10;border-color:transparent}
 .supply-pick{margin-bottom:11px}
 .sp-l{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);font-weight:600;margin-bottom:7px;padding-left:2px}
@@ -507,57 +565,73 @@ const CSS = `
 .box.on{background:var(--grn);border-color:var(--grn)}.box.on::after{content:"";position:absolute;left:6px;top:2px;width:5px;height:9px;border:solid #0a1f10;border-width:0 2px 2px 0;transform:rotate(45deg)}
 .kit-sub{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--fa);font-weight:600;padding-top:4px;border-top:1px solid var(--ln)}
 .unlock-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.hero{background:linear-gradient(165deg,var(--p2),var(--p1));border:1px solid var(--ln2);border-radius:16px;padding:16px;margin-bottom:12px}
-.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.hero-lbl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--grn);font-weight:700;margin-bottom:5px}
-.hero-name{display:block;font-family:'Cinzel',serif;font-size:24px;font-weight:700;line-height:1.1}
-.hero-sub{display:block;font-size:12px;color:var(--mu);margin-top:5px}
-.hero-fig{text-align:right;flex-shrink:0}
-.hero-net{display:block;font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:700;color:var(--gold);line-height:1}
+/* hero — the actionable headline */
+.hero{background:linear-gradient(165deg,var(--p2),var(--p1));border:1px solid var(--ln2);border-radius:16px;padding:15px 16px;margin-bottom:12px}
+.hero-lbl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--grn);font-weight:700;margin-bottom:7px}
+.hero-main{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.hero-name{font-family:'Cinzel',serif;font-size:27px;font-weight:700;line-height:1.05}
+.hero-name.sm{font-size:18px;line-height:1.2}
+.hero-fig{text-align:right;flex-shrink:0;white-space:nowrap}
+.hero-net{font-family:'JetBrains Mono',monospace;font-size:27px;font-weight:700;color:var(--gold);line-height:1}
 .hero-net.xp{color:var(--grn2)}
-.hero-figl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--fa);margin-top:4px}
+.hero-figl{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--fa);margin-top:3px}
+.hero-meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:11px;font-size:12px;color:var(--mu)}
+.hero-meta span{display:inline-flex;align-items:center;gap:5px}.hero-meta svg{color:var(--fa)}.hero-meta em{font-style:normal}
 .warn-line{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gold);margin-top:11px;padding:8px 10px;background:rgba(245,197,66,.07);border:1px solid rgba(245,197,66,.2);border-radius:9px}
-.rate-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
-.rate{background:var(--p3);border:1px solid var(--ln);border-radius:11px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
-.rate.hl{border-color:rgba(245,197,66,.3);background:rgba(245,197,66,.06)}
-.rate span{font-size:10.5px;color:var(--mu);font-weight:500;display:flex;align-items:center;gap:4px}
+.rate-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
+.rate{background:var(--p3);border:1px solid var(--ln);border-radius:11px;padding:9px 12px;display:flex;flex-direction:column;gap:3px}
+.rate.hl{border-color:rgba(245,197,66,.32);background:rgba(245,197,66,.07)}
+.rate.sm{padding:8px 11px}
+.rate span{font-size:10px;color:var(--mu);font-weight:500;display:flex;align-items:center;gap:4px}
 .rate span em{font-style:normal;color:var(--fa);cursor:help}
-.rate b{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600}
-.rate.hl b{color:var(--gold)}.rate b.cost{color:var(--cost)}
-.rate-note{font-size:12px;line-height:1.5;color:var(--mu);margin-top:11px}.rate-note b{color:var(--tx)}
-.rpd{margin-top:13px;display:flex;flex-direction:column;gap:8px}
+.rate b{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700}
+.rate.sm b{font-size:15px;font-weight:600}
+.rate.hl b{color:var(--gold);font-size:20px}.rate b.cost{color:var(--cost)}.rate b.xpv{color:var(--grn2)}
+.rpd{margin-top:13px;display:flex;flex-direction:column;gap:7px}
 .rpd span{font-size:12px;color:var(--mu)}.rpd b{color:var(--grn2);font-family:'JetBrains Mono',monospace}
 input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:var(--p3);outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--grn);cursor:pointer;box-shadow:0 0 0 4px rgba(95,208,127,.15)}
 input[type=range]::-moz-range-thumb{width:18px;height:18px;border:none;border-radius:50%;background:var(--grn);cursor:pointer}
+/* time-to-level */
+.ttl{background:linear-gradient(165deg,rgba(95,208,127,.08),rgba(95,208,127,.03));border:1px solid rgba(95,208,127,.22);border-radius:14px;padding:13px 14px;margin-bottom:12px}
+.ttl-h{display:flex;align-items:center;gap:6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--grn);font-weight:700;margin-bottom:11px}
+.ttl-row{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.ttl-row>label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);font-weight:600;display:flex;flex-direction:column;gap:4px}
+.ttl-row input[type=number]{width:62px;padding:7px 8px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;outline:none;margin-top:4px}
+.ttl-row input[type=number]:focus{border-color:var(--grn)}
+.ttl-runs{flex:1;min-width:130px;display:flex;flex-direction:column;gap:7px}
+.ttl-runs span{font-size:11.5px;color:var(--mu)}.ttl-runs b{color:var(--grn2);font-family:'JetBrains Mono',monospace}
+.ttl-out{margin-top:13px;padding-top:12px;border-top:1px solid var(--ln);display:flex;flex-direction:column;gap:4px}
+.ttl-out .big{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--grn2);line-height:1}
+.ttl-out span{font-size:12px;color:var(--mu);line-height:1.45}
 .nextf{background:linear-gradient(180deg,rgba(245,197,66,.05),rgba(245,197,66,.02));border:1px solid rgba(245,197,66,.18);border-radius:12px;padding:12px 13px;margin-bottom:12px}
 .nextf-h{display:flex;align-items:center;gap:6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);font-weight:700;margin-bottom:8px}
-.nextf-row{font-size:12.5px;line-height:1.5;color:var(--mu);margin-top:4px}.nextf-row b{color:var(--tx);font-weight:600}
+.nextf-row{font-size:12.5px;line-height:1.5;color:var(--mu);margin-top:5px}
+.nextf-row b{display:inline-block;min-width:24px;color:var(--gold);font-weight:700;font-size:10px}
 .supply-out{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx);background:rgba(95,208,127,.07);border:1px solid rgba(95,208,127,.2);border-radius:11px;padding:11px 13px;margin-bottom:12px;line-height:1.45}
 .supply-out svg{color:var(--grn);flex-shrink:0}.supply-out b{color:var(--grn2)}
-.card{background:var(--p1);border:1px solid var(--ln);border-radius:13px;padding:13px 14px;margin-bottom:11px}
-.card-h{display:flex;align-items:center;gap:7px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--grn);font-weight:700;margin-bottom:11px}
+.card{background:var(--p1);border:1px solid var(--ln);border-radius:13px;padding:12px 14px;margin-bottom:11px}
+.card-h{display:flex;align-items:center;gap:7px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--grn);font-weight:700;margin-bottom:10px}
 .shop{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--ln);font-size:13.5px}
 .shop:first-of-type{border-top:none}
 .shop-n{color:var(--tx)}.shop-q{font-family:'JetBrains Mono',monospace;color:var(--mu);font-size:12.5px}
-.shop-t{font-family:'JetBrains Mono',monospace;color:var(--tx);font-weight:600;min-width:56px;text-align:right}
-.shop.total{border-top:1px solid var(--ln2);margin-top:3px}.shop.total .shop-n{color:var(--mu);font-size:12px;text-transform:uppercase;letter-spacing:.05em}.shop.total .shop-t{color:var(--gold)}
-.bring{font-size:12px;color:var(--mu);margin-top:10px;padding-top:10px;border-top:1px solid var(--ln);line-height:1.45}
+.shop-t{font-family:'JetBrains Mono',monospace;color:var(--tx);font-weight:600;min-width:54px;text-align:right}
+.shop.total{border-top:1px solid var(--ln2);margin-top:2px}.shop.total .shop-n{color:var(--mu);font-size:12px;text-transform:uppercase;letter-spacing:.05em}.shop.total .shop-t{color:var(--gold)}
 .route{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--ln);font-size:13px}
 .route:first-of-type{border-top:none}
-.route.lock{opacity:.5}
-.rt-num{width:20px;height:20px;border-radius:6px;background:var(--p3);border:1px solid var(--ln);display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--grn2);flex-shrink:0}
-.rt-name{color:var(--tx);flex:1;display:flex;align-items:center;gap:7px}
-.rt-tele{font-size:12px;color:var(--mu);text-align:right}
-.rt-tele.yld{font-family:'JetBrains Mono',monospace;color:var(--grn2);font-size:12.5px}
-.rt-tele .xpv{color:var(--grn2);font-family:'JetBrains Mono',monospace}
+.route.lock{opacity:.45}
+.rt-num{width:19px;height:19px;border-radius:6px;background:var(--p3);border:1px solid var(--ln);display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--grn2);flex-shrink:0}
+.rt-name{color:var(--tx);flex:1;display:flex;align-items:center;gap:7px;min-width:0}
+.rt-tele{font-size:11.5px;color:var(--mu);text-align:right;flex-shrink:0}
+.rt-tele.yld{font-family:'JetBrains Mono',monospace;color:var(--grn2);font-size:13px}
+.rt-tele .xpv{color:var(--grn2);font-family:'JetBrains Mono',monospace;font-weight:600}
 .req{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fa)}
 .cost{color:var(--cost)}
 .df{font-size:9px;font-weight:700;color:var(--grn);border:1px solid rgba(95,208,127,.3);border-radius:4px;padding:1px 4px}
 .tree-note,.foot{display:flex;align-items:flex-start;gap:7px;font-size:12px;line-height:1.5;color:var(--mu)}
 .tree-note{background:rgba(95,208,127,.06);border:1px solid rgba(95,208,127,.18);border-radius:11px;padding:11px 13px;margin-bottom:12px}
-.tree-note svg{color:var(--grn);flex-shrink:0;margin-top:1px}.tree-note b{color:var(--tx)}
+.tree-note svg{color:var(--grn);flex-shrink:0;margin-top:1px}
 .foot{margin-top:14px;color:var(--fa);font-size:11px}.foot svg{flex-shrink:0;margin-top:1px}
 .empty{text-align:center;padding:34px 18px;color:var(--fa);font-size:14px}
-@media(max-width:480px){.hero-name{font-size:21px}.hero-net{font-size:22px}.unlock-grid{grid-template-columns:1fr}}
+@media(max-width:430px){.hd-l h1{font-size:18px}.hero-name{font-size:23px}.hero-net{font-size:23px}.unlock-grid{grid-template-columns:1fr}}
 `;
