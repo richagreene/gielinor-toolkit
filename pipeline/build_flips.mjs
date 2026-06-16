@@ -313,7 +313,7 @@ const BASE = "https://prices.runescape.wiki/api/v1/osrs";
 
 /* >>> EDIT THIS <<<  The OSRS Wiki asks API users for a descriptive
    User-Agent with a way to contact you. Put your RSN or email here. */
-const UA = "Coffer flip-analytics — contact: athleticthief@yahoo.com";
+const UA = "gielinor-toolkit flip analytics - contact: athleticthief@yahoo.com";
 
 const REPO = process.env.GITHUB_REPOSITORY || "richagreene/gielinor-toolkit";
 const DATA_BRANCH = "data";
