@@ -10,6 +10,7 @@ import {
 import Lodestar from "./Lodestar.jsx";
 import Flips from "./Flips.jsx";
 import Harvest from "./Harvest.jsx";
+import Treasury from "./Treasury.jsx";
 
 /* =============================== helpers =============================== */
 
@@ -1395,6 +1396,7 @@ const TOOLS = [
   { k: "flips", live: true, name: "Flips", tag: "Live Flip Finder", desc: "A live, ranked feed of flips that actually fill — screened and priced by a quant engine for fill probability, liquidity and real margin.", icon: <TrendingUp size={22} />, accent: "#48dd96" },
   { k: "harvest", live: true, name: "Harvest", tag: "Tree & Herb Runs", desc: "Plans your herb and tree runs from live GE prices and your levels — best crop to plant, full shopping list, and honest gp.", icon: <Sprout size={22} />, accent: "#5fd07f" },
   { k: "lodestar", live: true, name: "Lodestar", tag: "Ironman Progression", desc: "What to do next, readiness checks for every milestone boss, and the QoL unlocks that matter — built for ironmen.", icon: <Compass size={22} />, accent: "#5cc8ff" },
+  { k: "treasury", live: true, name: "Treasury", tag: "Money-Maker Scanner", desc: "Ranks what's profitable to high-alch or convert right now from live GE prices — buy-limit aware, with Magic & Smithing XP toward max.", icon: <Coins size={22} />, accent: "#f5c542" },
   { k: "drops", live: false, name: "Drop Ledger", tag: "Boss & raid profit", desc: "Log kills and drops, track GP/hour and splits, and see your real loot luck over time.", icon: <Skull size={22} />, accent: "#c98bff" },
   { k: "dps", live: false, name: "Gear & DPS Lab", tag: "Combat optimiser", desc: "Compare setups, max hits and DPS against any monster to find your best loadout.", icon: <Swords size={22} />, accent: "#ff8a93" },
   { k: "skill", live: false, name: "Skill Planner", tag: "XP routes & costs", desc: "Fastest and cheapest training paths, with live material costs from the GE.", icon: <GraduationCap size={22} />, accent: "#7fd6e8" },
@@ -1440,6 +1442,7 @@ export default function App() {
   if (view === "flips") return <Flips onHome={() => setView("home")} />;
   if (view === "harvest") return <Harvest onHome={() => setView("home")} />;
   if (view === "lodestar") return <Lodestar onHome={() => setView("home")} />;
+  if (view === "treasury") return <Treasury onHome={() => setView("home")} />;
   return <Launcher onOpen={(k) => setView(k)} />;
 }
 
