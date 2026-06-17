@@ -313,7 +313,7 @@ const BASE = "https://prices.runescape.wiki/api/v1/osrs";
 
 /* >>> EDIT THIS <<<  The OSRS Wiki asks API users for a descriptive
    User-Agent with a way to contact you. Put your RSN or email here. */
-const UA = "gielinor-toolkit flip analytics - contact: athleticthief@yahoo.com";
+const UA = "gielinor-toolkit-analytics - contact: athleticthief@yahoo.com";
 
 const REPO = process.env.GITHUB_REPOSITORY || "richagreene/gielinor-toolkit";
 const DATA_BRANCH = "data";
@@ -395,7 +395,7 @@ export async function main() {
   for (const m of mapping) {
     const lp = L[String(m.id)]; if (!lp) continue;
     const v = H24[String(m.id)] || {};
-    priceByName[String(m.name).toLowerCase()] = { high: lp.high ?? null, low: lp.low ?? null, vol: (v.highPriceVolume || 0) + (v.lowPriceVolume || 0) };
+    priceByName[String(m.name).toLowerCase()] = { name: m.name, high: lp.high ?? null, low: lp.low ?? null, vol: (v.highPriceVolume || 0) + (v.lowPriceVolume || 0), alch: m.highalch ?? null, limit: m.limit ?? null, members: !!m.members };
   }
   writeFileSync("out/prices.json", JSON.stringify(priceByName));
   console.log(`[coffer] ${rows.length} flips / ${items.length} items · history ${Object.keys(history).length} · ${new Date(now * 1000).toISOString()}`);
