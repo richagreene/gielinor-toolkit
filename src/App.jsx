@@ -1459,7 +1459,7 @@ const CSS = `
 .app{position:relative;min-height:100vh;width:100%;background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;overflow-x:hidden}
 .bg-glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(900px 480px at 78% -10%,rgba(231,185,74,.10),transparent 60%),radial-gradient(700px 520px at 8% 4%,rgba(72,221,150,.05),transparent 55%)}
 .bg-noise{position:fixed;inset:0;pointer-events:none;opacity:.025;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.wrap{position:relative;max-width:900px;margin:0 auto;padding:20px 16px 96px}
+.wrap{position:relative;max-width:900px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(96px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
 .row{display:flex}.gap{gap:12px}.gap-sm{gap:7px}
 
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
