@@ -365,13 +365,13 @@ export default function Flips({ onHome }) {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
 .flips{--bg:#0a0c10;--p1:#12151c;--p2:#171b24;--p3:#1d222c;--ln:rgba(255,255,255,.07);--ln2:rgba(255,255,255,.13);--tx:#eaeef5;--mu:#9aa3b3;--fa:#727c8d;--gold:#f5b62b;--gold2:#ffcf5e;--up:#46d07f;--warn:#f3a82f;--down:#f0664e;
-  font-family:'Sora',system-ui,sans-serif;color:var(--tx);background:var(--bg);min-height:100dvh;padding:0 14px 60px;max-width:760px;margin:0 auto}
+  font-family:'Sora',system-ui,sans-serif;color:var(--tx);background:var(--bg);min-height:100dvh;padding:0 calc(14px + env(safe-area-inset-right,0px)) calc(60px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));max-width:760px;margin:0 auto}
 .flips *{box-sizing:border-box}
 .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
 .spin{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 .flip{transform:rotate(180deg)}
 
-.hd{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:16px 2px 13px;background:linear-gradient(180deg,var(--bg) 78%,transparent);backdrop-filter:blur(6px)}
+.hd{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:calc(16px + env(safe-area-inset-top,0px)) 2px 13px;background:linear-gradient(180deg,var(--bg) 86%,transparent);backdrop-filter:blur(6px)}
 .hd-l{display:flex;align-items:center;gap:9px}.hd-l>svg{color:var(--gold)}
 .hd-l h1{font-family:'Cinzel',serif;font-weight:700;font-size:23px;margin:0;letter-spacing:.01em;color:var(--tx)}
 .hd-r{display:flex;align-items:center;gap:9px}
