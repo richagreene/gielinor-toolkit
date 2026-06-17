@@ -147,15 +147,20 @@ function bestGpHerb(patches, level, kit, map) {
   for (const h of HERBS.filter((x) => x.farm <= level)) { const r = herbRun(h, patches, level, kit, map); if (r.net == null) continue; if (!best || r.net > best.net) best = { crop: h, ...r }; }
   return best;
 }
-/* pick best species of a list for a mode: 'xp' = highest xp, 'value' = lowest gp/xp */
-function pickTree(list, level, map, mode, useCompost) {
-  const opts = list.filter((t) => t.farm <= level).map((t) => {
+/* all unlocked species with cost + gp/xp metrics */
+function treeOpts(list, level, map, useCompost) {
+  return list.filter((t) => t.farm <= level).map((t) => {
     const sap = priceOf(map, t.sapling) ?? 0;
     const prot = useCompost ? (priceOf(map, "ultracompost") ?? 0) : (t.protect ? (priceOf(map, t.protect.item) ?? 0) * t.protect.qty : 0);
     const cost = sap + prot;
     return { ...t, cost, gpxp: cost / t.xp };
   });
+}
+/* choose a species: manual selection wins if unlocked, else mode default ('xp'=highest xp, 'value'=lowest gp/xp) */
+function pickTree(list, level, map, mode, useCompost, sel) {
+  const opts = treeOpts(list, level, map, useCompost);
   if (!opts.length) return null;
+  if (sel) { const s = opts.find((o) => o.key === sel); if (s) return s; }
   return mode === "value" ? opts.reduce((a, b) => (b.gpxp < a.gpxp ? b : a)) : opts.reduce((a, b) => (b.xp > a.xp ? b : a));
 }
 
@@ -176,6 +181,9 @@ export default function Harvest({ onHome }) {
   const [goalFarm, setGoalFarm] = useState(99);
   const [treeMode, setTreeMode] = useState("xp");
   const [fruitMode, setFruitMode] = useState("xp");
+  const [regSel, setRegSel] = useState(null);
+  const [hardSel, setHardSel] = useState(null);
+  const [fruitSel, setFruitSel] = useState(null);
   const [compost, setCompost] = useState("ultra");
   const [secateurs, setSecateurs] = useState(true);
   const [cape, setCape] = useState(false);
@@ -299,22 +307,26 @@ export default function Harvest({ onHome }) {
   const shopTotal = shopping.reduce((s, i) => s + (i.total || 0), 0);
 
   const treeRun = useMemo(() => {
-    const reg = pickTree(TREES, farming, priceMap, treeMode, false);
-    const hard = pickTree(HARDWOODS, farming, priceMap, treeMode, true);
+    const reg = pickTree(TREES, farming, priceMap, treeMode, false, regSel);
+    const hard = pickTree(HARDWOODS, farming, priceMap, treeMode, true, hardSel);
     const red = farming >= REDWOOD.farm ? { ...REDWOOD, cost: (priceOf(priceMap, REDWOOD.sapling) ?? 0) + (priceOf(priceMap, "dragonfruit") ?? 0) * 6 } : null;
     let xp = 0, gp = 0; const lines = []; let stops = 0;
     if (reg) { xp += reg.xp * 6; gp += reg.cost * 6; stops += 6; lines.push({ name: reg.name, n: 6, xp: reg.xp * 6, cost: reg.cost * 6, note: reg.protect ? `${reg.protect.qty}× ${reg.protect.item}` : "" }); }
     if (hard) { xp += hard.xp * 2; gp += hard.cost * 2; stops += 2; lines.push({ name: hard.name, n: 2, xp: hard.xp * 2, cost: hard.cost * 2, note: "ultracompost" }); }
     if (red) { xp += red.xp; gp += red.cost; stops += 1; lines.push({ name: red.name, n: 1, xp: red.xp, cost: red.cost, note: "6× Dragonfruit" }); }
     return { reg, hard, red, xp, gp, lines, stops, timeMin: stops ? Math.round(stops * 0.7 + 2) : 0 };
-  }, [farming, priceMap, treeMode]);
+  }, [farming, priceMap, treeMode, regSel, hardSel]);
 
   const fruitRun = useMemo(() => {
-    const best = pickTree(FRUIT, farming, priceMap, fruitMode, false);
+    const best = pickTree(FRUIT, farming, priceMap, fruitMode, false, fruitSel);
     if (!best) return null;
     return { ...best, n: 6, xp: best.xp * 6, gp: best.cost * 6, stops: 6, timeMin: 6 };
-  }, [farming, priceMap, fruitMode]);
+  }, [farming, priceMap, fruitMode, fruitSel]);
 
+  const regOpts = useMemo(() => treeOpts(TREES, farming, priceMap, false), [farming, priceMap]);
+  const hardOpts = useMemo(() => treeOpts(HARDWOODS, farming, priceMap, true), [farming, priceMap]);
+  const fruitOpts = useMemo(() => treeOpts(FRUIT, farming, priceMap, false), [farming, priceMap]);
+  const redOpt = useMemo(() => { if (farming < REDWOOD.farm) return null; const cost = (priceOf(priceMap, REDWOOD.sapling) ?? 0) + (priceOf(priceMap, "dragonfruit") ?? 0) * 6; return { ...REDWOOD, cost, gpxp: cost / REDWOOD.xp }; }, [farming, priceMap]);
   const activeRun = tab === "fruit" ? fruitRun : treeRun;
   const ttl = useMemo(() => {
     if (!activeRun || !activeRun.xp) return null;
@@ -342,6 +354,22 @@ export default function Harvest({ onHome }) {
       </div>
       {ttl.reached ? <div className="ttl-out">You're already at Farming {goalFarm}+ 🎉</div> :
         <div className="ttl-out"><b className="big">{dur(ttl.days * 24 * 60)}</b><span>to Farming {goalFarm} at {treeRuns}/day · {fmt(ttl.need)} xp to go · ~{ttl.activeHrs.toFixed(1)} hr active total</span></div>}
+    </div>
+  );
+  const Compare = ({ title, mult, list, opts, sel, setSel, chosenKey }) => (
+    <div className="card">
+      <div className="card-h"><TreePine size={13} /> {title} · ×{mult}<button className={"autop" + (sel ? "" : " on")} onClick={() => setSel(null)}>Auto</button></div>
+      {list.map((t) => {
+        const o = opts.find((x) => x.key === t.key);
+        const isSel = chosenKey === t.key;
+        return (
+          <button key={t.key} disabled={!o} className={"cmp" + (isSel ? " sel" : "") + (!o ? " lock" : "")} onClick={() => o && setSel(t.key)}>
+            <span className="cmp-n">{isSel && <span className="dot" />}{t.name}{!o && <span className="req">Lv {t.farm}</span>}</span>
+            {o ? <span className="cmp-s"><b className="xpv">{fmt(o.xp)}</b> xp<span className="sep">·</span><b className="gpxp">{o.gpxp.toFixed(2)}</b> gp/xp<span className="sep">·</span><span className="cost">−{fmt(o.cost)}</span></span>
+               : <span className="cmp-s faint">{fmt(t.xp)} xp · locked</span>}
+          </button>
+        );
+      })}
     </div>
   );
 
@@ -455,14 +483,15 @@ export default function Harvest({ onHome }) {
         const run = tab === "fruit" ? fruitRun : treeRun;
         const m = tab === "fruit" ? fruitMode : treeMode;
         const setM = tab === "fruit" ? setFruitMode : setTreeMode;
+        const clearSel = tab === "fruit" ? () => setFruitSel(null) : () => { setRegSel(null); setHardSel(null); };
         const empty = tab === "fruit" ? !fruitRun : treeRun.xp === 0;
         const title = tab === "fruit" ? (fruitRun ? fruitRun.name : "") : [treeRun.reg, treeRun.hard, treeRun.red].filter(Boolean).map((t) => t.name).join(" · ");
         return (
           <>
             <div className="tree-note"><Info size={13} /> {tab === "fruit" ? "Fruit runs are an XP activity — they cost gp and pay Farming xp (~16 h grow, so ~1/day)." : "Tree runs are an XP activity — gp in, Farming xp out. Hardwoods run on ultracompost, no protection."}</div>
             <div className="modes two">
-              <button className={m === "xp" ? "on" : ""} onClick={() => setM("xp")}>Most XP</button>
-              <button className={m === "value" ? "on" : ""} onClick={() => setM("value")}>Best XP / gp</button>
+              <button className={m === "xp" ? "on" : ""} onClick={() => { setM("xp"); clearSel(); }}>Most XP</button>
+              <button className={m === "value" ? "on" : ""} onClick={() => { setM("value"); clearSel(); }}>Best XP / gp</button>
             </div>
 
             {empty && <div className="empty">No {tab === "fruit" ? "fruit tree" : "tree"} available at Farming {farming}.</div>}
@@ -494,12 +523,14 @@ export default function Harvest({ onHome }) {
                   ? FRUIT_PATCHES.filter((p) => !p.unlock || (p.unlock === "guild85" ? farming >= 85 : true))
                   : [...TREE_PATCHES.filter((p) => !p.unlock || (p.unlock === "guild65" ? (unlocks.guild65 && farming >= 65) : true)), ...HARDWOOD_PATCHES, ...(treeRun.red ? [{ name: "Farming Guild (redwood)", tele: "Skills necklace / Farm cape" }] : [])]} />
 
-                <div className="card">
-                  <div className="card-h"><TreePine size={13} /> {tab === "fruit" ? "Fruit" : "Tree"} ladder</div>
-                  {(tab === "fruit" ? FRUIT : [...TREES, ...HARDWOODS, REDWOOD].sort((a, b) => a.farm - b.farm)).map((t) => (
-                    <div key={t.key} className={"route" + (t.farm > farming ? " lock" : "")}><span className="rt-name">{t.name} <span className="req">Lv {t.farm}</span></span><span className="rt-tele yld">{fmt(t.xp)} xp</span></div>
-                  ))}
-                </div>
+                <div className="cmp-hint">Tap any unlocked tree to plant it yourself — “Auto” re-optimizes for the mode above.</div>
+                {tab === "fruit"
+                  ? <Compare title="Fruit patches" mult={6} list={FRUIT} opts={fruitOpts} sel={fruitSel} setSel={setFruitSel} chosenKey={fruitRun && fruitRun.key} />
+                  : <>
+                      <Compare title="Regular tree patches" mult={6} list={TREES} opts={regOpts} sel={regSel} setSel={setRegSel} chosenKey={treeRun.reg && treeRun.reg.key} />
+                      <Compare title="Hardwood patches" mult={2} list={HARDWOODS} opts={hardOpts} sel={hardSel} setSel={setHardSel} chosenKey={treeRun.hard && treeRun.hard.key} />
+                      {redOpt && <div className="rednote"><span className="dot" />Redwood ×1 auto-included at 90 · <b className="xpv">{fmt(redOpt.xp)}</b> xp · <b className="gpxp">{redOpt.gpxp.toFixed(2)}</b> gp/xp</div>}
+                    </>}
               </>
             )}
           </>
@@ -514,11 +545,11 @@ export default function Harvest({ onHome }) {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
 .hv{--bg:#0a0d0b;--p1:#11160f;--p2:#161d14;--p3:#1c2519;--ln:rgba(255,255,255,.07);--ln2:rgba(255,255,255,.13);--tx:#eaf0e8;--mu:#94a394;--fa:#6a7869;--grn:#5fd07f;--grn2:#86e6a0;--gold:#f5c542;--cost:#f0844e;
-  font-family:'Sora',system-ui,sans-serif;color:var(--tx);background:var(--bg);min-height:100dvh;padding:0 13px 46px;max-width:720px;margin:0 auto}
+  font-family:'Sora',system-ui,sans-serif;color:var(--tx);background:var(--bg);min-height:100dvh;padding:0 calc(13px + env(safe-area-inset-right,0px)) calc(46px + env(safe-area-inset-bottom,0px)) calc(13px + env(safe-area-inset-left,0px));max-width:720px;margin:0 auto}
 .hv *{box-sizing:border-box}
 .spin{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 .flip{transform:rotate(180deg)}
-.hd{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 2px 11px;background:linear-gradient(180deg,var(--bg) 82%,transparent);backdrop-filter:blur(6px)}
+.hd{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(14px + env(safe-area-inset-top,0px)) 2px 11px;background:linear-gradient(180deg,var(--bg) 88%,transparent);backdrop-filter:blur(6px)}
 .hd-l{display:flex;align-items:center;gap:8px;min-width:0}.hd-l>svg{color:var(--grn);flex-shrink:0}
 .hd-l h1{font-family:'Cinzel',serif;font-weight:700;font-size:21px;margin:0;color:var(--tx);white-space:nowrap}
 .hd-r{display:flex;align-items:center;gap:8px;flex-shrink:0}
@@ -633,5 +664,21 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border:none;border-ra
 .tree-note svg{color:var(--grn);flex-shrink:0;margin-top:1px}
 .foot{margin-top:14px;color:var(--fa);font-size:11px}.foot svg{flex-shrink:0;margin-top:1px}
 .empty{text-align:center;padding:34px 18px;color:var(--fa);font-size:14px}
+.autop{margin-left:auto;font-family:'Sora';font-size:10px;font-weight:600;text-transform:none;letter-spacing:0;padding:3px 10px;border-radius:14px;border:1px solid var(--ln);background:var(--bg);color:var(--fa);cursor:pointer}
+.autop.on{color:var(--grn2);border-color:var(--grn);background:rgba(95,208,127,.1)}
+.cmp-hint{font-size:11.5px;color:var(--fa);margin:-2px 2px 9px;line-height:1.4}
+.cmp{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 2px;border:none;border-top:1px solid var(--ln);background:none;cursor:pointer;text-align:left;font-family:'Sora'}
+.cmp:first-of-type{border-top:none}
+.cmp.lock{opacity:.42;cursor:default}
+.cmp.sel{background:rgba(95,208,127,.07);margin:0 -14px;padding:9px 14px}
+.cmp-n{color:var(--tx);font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:7px;flex-shrink:0}
+.cmp.sel .cmp-n{color:var(--grn2)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--grn);flex-shrink:0}
+.cmp-s{font-size:11.5px;color:var(--mu);white-space:nowrap;font-family:'JetBrains Mono',monospace;text-align:right}
+.cmp-s b{font-weight:700}.cmp-s .xpv{color:var(--grn2)}.cmp-s .gpxp{color:var(--gold)}
+.cmp-s.faint{color:var(--fa)}
+.sep{margin:0 5px;color:var(--fa)}
+.rednote{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mu);padding:10px 14px;background:var(--p1);border:1px solid var(--ln);border-radius:11px;margin-bottom:11px;font-family:'JetBrains Mono',monospace}
+.rednote b{font-weight:700}.rednote .xpv{color:var(--grn2)}.rednote .gpxp{color:var(--gold)}
 @media(max-width:430px){.hd-l h1{font-size:18px}.hero-name{font-size:23px}.hero-net{font-size:23px}.unlock-grid{grid-template-columns:1fr}}
 `;
